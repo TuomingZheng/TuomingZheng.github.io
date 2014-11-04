@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://tuomingzheng.github.io/sitemap.xml 
+Sitemap: http://TuomingZheng.github.io/sitemap.xml 
