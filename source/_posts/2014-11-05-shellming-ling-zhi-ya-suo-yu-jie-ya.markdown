@@ -1,0 +1,108 @@
+---
+layout: post
+title: "Shell命令之压缩与解压"
+date: 2014-11-05 01:42:59 +0800
+comments: true
+categories: Shell命令
+---
+>Linux系统不以文件的扩展名区分文件，但是我们常常在Linux上看到诸如.gz、.bz2、.Z和.tar.bz2等文件扩展名的文件。
+其实这些压缩文件的扩展名仅仅是为了便于用户识别该压缩文件是以哪一种压缩软件进行压缩的。
+<h1>概述</h1>
+<p>
+在Linux上常用的压缩与解压命令有gzip、bzip2和compress。tar命令本身是对多个文件进行打包操作，但是用户在Linux系统上常常使  
+tar命令携带特定的参数在打包的同时进行压缩处理。
+</p>
+
+<p>
+下面将逐一介绍常用的压缩与解压命令，他们分别是：
+</p>
+
+<h1>gzip命令</h1>
+<p>
+gzip [-cdtv#] 待处理文件名  
+-c 将压缩数据输出到标准输出流，该参数经常配合数据流重定向使用  
+-d 解压指定的压缩文件，该压缩文件只能是使用gzip或则compress压缩形成的压缩文件  
+-t 用来检验指定的压缩文件的一致性，查看压缩文件是否有错误  
+-v 在压缩过程中显示压缩比等信息  
+-# #代表数字-1到-9，数字代表压缩等级其中-1等级压缩最快但压缩比最差  
+
+		例子：	$ cp /etc/man.config .		<<== 将etc目录下的man.config文件拷贝到当前目录  
+				$ gzip -v man.config		<<== 压缩当前目录下的man.config文件，生成man.config.gz文件  
+											<<== 在生成压缩文件后man.config将消失  
+				$ gzip -d man.config.gz		<<== 将当前目录下的man.config.gz文件解压，该操作将在当前目录  
+											<<== 下生成man.config文件，同时压缩文件将消失  
+				$ gzip -c man.config > man.config.gz	<<== 使用数据流重定向技术，在当前目录下生成压缩  
+														<<== 文件同时原文件依然存在
+				$ zcat man.config.gz		<<== 该命令用于查看gzip压缩文件，当时压缩文件对应的原文件必须  
+											<<=  是纯文本文件  
+</p>
+<h1>bzip2命令</h1>
+<p>
+bzip2 [-cdkvz#]	待处理文件名  
+-c 将压缩数据输出到标志输出流，一般配合数据流重定向使用  
+-d 解压指定的压缩文件，该压缩文件一般是gzip压缩文件  
+-k 压缩过程中保留原文件，即不删除原文件  
+-v 显示压缩过程中的诸如压缩比等信息	
+-z 将指定的文件使用gzip进行压缩处理  
+-# #代表数组-1到-9, 数字同样是压缩等级，其中-1的最快当压缩比最差  
+
+		例子：		$ cp /etc/manpath.config .		<<== 将etc目录下的manpath.config文件拷贝到当前目录  
+					$ bzip2 -z manpath.config		<<== 使用bzip2压缩文件，压缩后将形成manpath.config
+														 .bz2  文件，但是manpath.config将消失  
+					$ bzip2 -d manpath.config.bz2   <<== 解压当前目录下的压缩文件，在解压后将生成
+														 manpath.config文件，但是原来的压缩文件将消失  
+					$ bzip2 -c manpath.config > manpath.config.bz2		<<== 使用数据流重定下技术压缩
+																		<<== manpath.config文件，将生
+																		<<== 成指定名字的压缩文件同时
+																		<<== 原文件将继续存在  
+
+					$ rm -f manpath.config,bz2  
+					$ bzip2 -k manpath.config		<<== 该命令的作用与上一条压缩命令相同  
+					$ bzcat manpath.config.bz2		<<== 使用bzcat命令查看压缩文件  
+</p>
+<h1>compress命令与uncompress命令</h1>
+<p>
+<li>compress [-rcv]	待处理文件名称  </li>
+-r 将目录下的文件一并进行压缩处理  
+-c 将压缩数据输出到标准输出流上  
+-v 显示压缩过程中的信息  
+						
+<li>uncompress 压缩文件（该压缩文件一般移.Z作为扩展名）</li>
+
+		例子：	$ cp /etc/manpath.config .	<<== 将etc下的manpath.config文件拷贝的当前目录  
+				$ compress manpath.config	<<== 将采用compress压缩manpath.config文件并在当前  
+											<<== 目录下生成maptah.config.Z文件（不保留原文件）  
+				$ uncompress manpath.config.Z	<<== 解压maptah.config.Z文件(不保留原文件)  
+
+其实compress命令在现在的Linux上使用并不多，最常用的还是gzip和bzip2两个命令。其中compress命令的压缩比最差，bzip2命令的压缩比最好。
+</p>
+<h1>tar命令</h1>
+<p>下面我们将分别介绍使用tar命令压缩、解压、打包、解打包和查看的用法。</p> 
+<li>打包、压缩文件: tar [-j|-z] [cv] [-f 处理后生成的文件名]  待处理文件名</li>
+<li>查看文件: tar [-j|-z] [tv] [-f 待查看的文件]</li>
+<li>解压、解打包: tar [-j|-z] [xv] [-f 待处理文件名]  [-C 目标目录]</li>
+
+参数说明：</br>	
+-c 打包指定的文件（目录）  
+-t 查看打包文件内有那些文件  
+-x 解打包指定文件、配合-C参数实现解打包到指定目录下  
+-j 使用bzip2进行压缩或则解压，一般与-c配合表示打包并压缩文件。与-x配合表示解打包并解压指定文件  
+-z 使用gzip进行压缩或则解压，使用情况与-j类似  
+-v 显示处理过程中的信息 (文件名)  
+-f 该参数后面一般携带最终生成的文件  
+-C 指定解打包后生成文件的位置  
+-p 小写字母p代表打包过程中保留原文件的权限属性  
+-P 大写字母P代表保留原文件的绝对路径  
+--exclude=filename  打包过程中不处理指定的文件  
+
+		例子：		$ tar -jpcv -f ./etc.tar.bz2 /etc	<<== 将etc目录打包并使有bzip2进行压缩，
+															同时保留原来文件的权限属性  
+					$ tar -jtv -f etc.tar.bz2			<<== 查看包etc.tar.bz2内的文件情况  
+					$ tar -jxv -f etc.tar.bz2 -C /tmp   <<== 将包etc.tar.bz2解压缩到/tmp目录  
+					$ tar -jpcv -f etc.tar.bz2 /etc  
+					$ tar -jxv -f etc.tar.bz2 /etc/passwd	<<== 仅仅解压包etc.tar.bz2内的passwd文件 
+					$ tar -jtv -f etc.tar.bz2 --exclude=/etc/passwd	/etc	<<== 将etc目录打包并使用  
+																			<<== bzip2压缩但是不包括  
+																			<<== /etc/passwd文件  
+
+在Linux系统上我们经常看到tarfile和tarball名词，他们的具体区别是tarfile是使用tar命令进行打包并且没有使用压缩参数, 而tarball则是使用tar命令并且进行了压缩处理。  
