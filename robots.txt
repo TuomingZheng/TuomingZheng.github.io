@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: 
+
+Sitemap: http://tuomingzheng.github.io/sitemap.xml 
