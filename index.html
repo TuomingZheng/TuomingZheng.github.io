@@ -9,7 +9,8 @@
   <meta name="author" content="TuomingZheng">
 
   
-  <meta name="description" content="SwipeListView是最近比较火的一个开源组件，用于实现ListView元素側滑的功能。SwipeListView的使用还是比较简单的。 自定义属性 首先需要认识SwipeListView的几个自定义属性，他们定义在swipelistview__attrs.xml文件内。 &lt; &hellip;">
+  <meta name="description" content="SwipeListView视图源码比较简单,SwipeListView主要起到连接用户和滑动事件处理实体的作用。其主要方法
+可以归结为几个大类,属性设置系列方法、用户滑动事件回调系列方法和控制SwipeListView表现系列方法。 现在将SwipeListView的几类方法描述如下： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +65,222 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/05/swipelistviewyuan-ma-fen-xi-zhi-swipelistviewshi-tu/">SwipeListView源码分析之SwipeListView视图</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-05T23:04:00+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>SwipeListView视图源码比较简单,SwipeListView主要起到连接用户和滑动事件处理实体的作用。其主要方法
+可以归结为几个大类,属性设置系列方法、用户滑动事件回调系列方法和控制SwipeListView表现系列方法。</p></blockquote>
+
+<p>现在将SwipeListView的几类方法描述如下：</p>
+
+
+<h1>属性设置系列方法</h1>
+
+
+<ul>
+    <li>swipeOffsetRight属性</li>
+    <p><code>setOffsetRight()</code>方法, 设置右側滑动的边距。</p>
+    <li>swipeOffsetLeft属性</li>
+    <p><code>setOffsetLeft()</code>方法,设置左側滑动的边距。</p>
+    <li>swipeMode属性</li>
+    <p><code>setSwipeMode()</code>方法，取值常量定义于SwipeListView类，SWIPE_MODE_NONE、SWIPE_MODE_BOTH、SWIPE_MODE_RIGHT、SWIPE_MODE_LEFT五个。</p>
+    <li>swipeCloseAllItemsWhenMoveList属性</li>
+    <p><code>setSwipeCloseAllItemsWhenMoveList()</code>方法，设置在SwipeListView上下滚动时是否关闭所有SwipeListView的组件。</p>
+    <li>swipeOpenOnLongPress属性</li>
+    <p><code>setSwipeOpenOnLongPress()</code>方法，设置用户在长按SwipeListView上的组件时是否打开组件（组件执行相应的操作）</p>
+    <li>swipeActionLeft属性</li>
+    <p><code>setSwipeActionLeft()</code>方法，设置组件左滑操作类型，取值定义于SwipeListView内。
+    <code>getSwipeActionLeft()</code>方法，获取组件左滑动操作类型，取值定义于SwipeListView内。
+    该属性的值分别可以设置为SWIPE_ACTION_REVEAL、SWIPE_ACTION_DISMISS、SWIPE_ACTION_CHOICE和SWIPE_ACTION_NONE。</p>
+    <li>swipeActionRight属性</li>
+    <p><code>setSwipeActionRight()</code>方法，设置组件右滑操作类型，取值与swipeActionLeft一样。
+    <code>getSwipeActionRight()</code>方法，获取组件右滑操作类型，取值与swipeActionLeft一样。</p>
+</ul>
+
+
+<h1>SwipeListView控制系列方法</h1>
+
+
+<p><li>SwipeListView的onInterceptTouchEvent()方法</li>
+<img class="center" src="/images/SwipeListView1.png"></p>
+
+<p>
+    该方法主要是截获用户滑动事件，在判断到用户是在垂直方向上滑动时将拦截Touch事件，此时将由SwipeListViewTouchListener的<code>onTouch()</code>
+    方法进行Touch事件处理，并执行相应的动画。SwipeListViewTouchListener实现了OnTouchListsner接口，并在SwipeListView的<code>init()</code>方法内
+    将其设置为SwipeListView的监听。起到关键性作用的方法是<code>checkInMoving()</code>方法，该方法通过两次Move事件的xDelta和yDeltaY进行判断用户
+    是在X轴上进行滑动还是在Y轴上进行滑动，滑动距离的阈值是ViewConfiguration返回的ScaledPagingTouchSlot。
+</p>
+
+
+<p><li>SwipeListView的init()方法</li></p>
+
+<p>
+    该方法在SwipeListView的构造方法里调用，该方法初始化SwipeListView自定义属性的值，并将这些参数值设置到SwipeListViewTouchListener内。其中比较
+    重要的是设置SwipeListView的OnTouchListener和onScrollListener监听。OnScrollListener实现在SwipeListViewTouchListener内，该监听的主要功能是控制
+    在choice模式下用户滑动ListView时关闭所有的Items，在滑动时停止对用户Touch事件的处理。
+</p>
+
+
+<p><img class="center" src="/images/SwipeListView2.png">
+<li>SwipeListView的unselectedChoiceStates()方法</li></p>
+
+<p>
+    SwipeListView组件本身没有实现该功能而是将该实现交给SwipeListViewTouchListener类来实现。在SwipeListViewTouchListener内将遍历所有的Items并将
+    他们的checked状态设置为false,在遍历到的Item在可见区域内时将根据该Item的checked状态设置该Item所属的FrontView的背景图片。
+</p>
+
+
+<p><img class="center" src="/images/SwipeListView3.png">
+<li>SwipeListView的setAdapter()方法</li></p>
+
+<p>
+    该方法比较简单，首先调用父类的setAdapter()方法也就是ListView的setAdapter()方法。在调用完父类的setAdapter()方法后将设置SwipeListViewTouch
+    Listener内的opened、openedRight和checked三个列表的初始值。这三个列表分别表示各个Item的打开状态、右滑打开状态和checked状态，在该方法内将会
+    初始化为Adapter元素个数大小。该方法接下来添加一个DataSetObserver，在数据发生变化时将动态增加opened、openedRiht和checked列表的大小。
+</p>
+
+
+<p><img class="center" src="/images/SwipeListView4.png">
+<li>SwipeListView的dismiss()方法</li></p>
+
+<p>
+    SwipeListView的dismiss()方法有点儿小复杂，该方法将根据参数position指定的Item是否处于可见的区域而执行不同的逻辑。在Item处于可见的区域时将
+    创建一个ValueAnimator实例，并添加一个AnimatorUpdateListener监听，在该监听的回调方法内将动态控制Item的布局参数。在整个动画过程中不允许该
+    组件进行任何操作。在当前Item不在可视区域内时将简单的添加一个PendingDismissData到mPendingDismisses中。最后如果当前Item在可见区域内时在动画
+    结束后100ms将恢复该Item的Alpha，TranslateX等值并重新将该Item的布局参数恢复为原来的值，在这一切结束后将销毁mPendingDismisses列表。如果当前
+    Item处于不可见区域时将只会简单的销毁mPendingDismisses列表。
+</p>
+
+
+<p><li>SwipeListView的dismissSelected()方法</li></p>
+
+<p>
+    该方法的基本原理和dismiss()方法类似，所不同的是该方法将通过SwipeListViewTouchListener遍历所有处于checked状态的Items并执行dismiss()方法同样
+    的逻辑。在处理的Item列表内存在处于可见区域内的元素时，将恢复这些Item的值并销毁mPendingDismiss列表。
+</p>
+
+
+<p><img class="center" src="/images/SwipeListView5.png">
+<li>SwipeListView的openAnimation()方法</li></p>
+
+<p>
+    该方法将功能的实现委托给SwipeListViewTouchListener的<code>openAnimation()</code>方法来实现，该方法将获取指定position的Item的FrontView并将其
+    传递给一个同名的重载方法，在判断到该Item没有处于open状态时将调用<code>generateRevealAnimate()</code>执行左滑动画操作。
+</p>
+
+
+<p><img class="center" src="/images/SwipeListView6.png">
+<li>SwipeListView的closeAnimate()方法</li></p>
+
+<p>
+    该方法也是调用SwipeListViewTouchListener的<code>closeAnimation()</code>方法来实现右滑恢复Item原位的操作。SwipeListViewTouchListener的方法将
+    调用<code>generateRevealAnimate()</code>实现右滑恢复原位操作。
+
+</p>
+
+
+<p><li>SwipeListView的closeOpenedItems()方法</li></p>
+
+<p>
+    该方法还是通过调用SwipeListViewTouchListener的同名方法来实现对应的功能，该方法的基本思路是遍历当前可见区域内的所有Items调用closeAnimation()
+    关闭所有处于opened状态的元素，也就是执行右滑恢复原位的操作。
+</p>
+
+
+<h1>SwipeListView用户滑动回调方法</h1>
+
+
+<p><li>SwipeListView的onDismiss()方法</li></p>
+
+<p>
+    该回调方法表示那些Item元素执行了dismiss操作，将方法将事件派发给注册的SwipeListViewListener监听。<code>onDismiss()</code>方法被SwipeListViewTouch
+    Listener的<code>removePendingDismisses()</code>(主要针对Item处于可见区域的情况)和swipeListView的<code>dismiss()</code>和<code>dismissSelected()
+    </code>调用（这两个主要针对Item不在可见区域内的情况）。
+</p>
+
+
+<p><li>SwipeListView的onStartOpen()方法和onStartClose()方法</li></p>
+
+<p>
+    <code>onStartOpen()</code>方法表示指定position的Item将执行某种操作，包括左滑等操作。该方法在SwipeListViewTouchListener的<code>onTouch()
+    </code>方法的Move事件内进行调用。<code>onStartClose()</code>方法表示指定position的Item将执行恢复操作，这个方法的调用也是在<code>OnTouch()
+    </code>方法的Move事件内。Move事件控制调用<code>onStartOpen()</code>还是<code>onStartClose()</code>方法是由当前Item是否处于opened状态决定的。
+
+</p>
+
+
+<p><li>SwipeListView的onClickFrontView()方法和onClickBackView()方法</li></p>
+
+<p>
+    <code>onClickFrontView()</code>表示用户点击Item的FrontView，<code>onClickBackView()</code>方法表示用户点击Item的BackView。这两个方法没有什么
+    可以多加介绍的。
+</p>
+
+
+<p><li>SwipeListView的onOpened()方法和onClosed()方法</li></p>
+
+<p>
+    <code>onOpened()</code>方法表示指定position的Item已经处于opened状态（滑动、渐隐等）并且是否是右滑的。而<code>onClosed()</code>方法表示指定
+    position的Item是否处于非opened状态（恢复）。这两个方法都是在SwipeListViewTouchListener的<code>generateRevealAnimate()</code>方法内的动画结束
+    回调。
+</p>
+
+
+<p><li>onChoiceStarted()、onChoiceEnded()和onChoiceChanged()方法</li></p>
+
+<p>
+    <code>onChoiceStarted()</code>在第一次出现Item被checked的时候调用、方法<code>onChoiceEnded()</code>在最后一个Item的checked状态变为false时调用。
+    <code>onChoiceChanged()</code>在每一次有Item的checked状态发生变化时调用。所有这些方法在SwipeListViewTouchListener的swapChoiceState()方法内调用。
+</p>
+
+
+<p><li>onFirstListItem()、onLastListItem()和onListChanged()</li></p>
+
+<p>
+    <code>onFirstListItem()</code>和<code>onLastListItem()</code>在OnScrollListener的<code>onScroll()</code>方法调用。他们分别在第一个Item可见和最后
+    一个Item可见时调用。<code>onListChanged()</code>方法在SwipeListView的<code>setAdapter()</code>方法内的数据监听器的回调中调用。
+</p>
+
+
+<p><li>SwipeListView的move()方法</li></p>
+
+<p>
+    <code>move()</code>方法在SwipeListViewTouchListener的<code>onTouch()</code>方法的Move事件内调用，用来通知监听器指定的Item在滑动，并且可以获得
+    该Item的滑动距离。
+</p>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -465,6 +682,10 @@ bzip2 [-cdkvz#] 待处理文件名<br/>
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/swipelistviewyuan-ma-fen-xi-zhi-swipelistviewshi-tu/">SwipeListView源码分析之SwipeListView视图</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2014/11/05/androidkai-yuan-zu-jian-zhi-swipelistview/">Android开源组件之SwipeListView</a>
