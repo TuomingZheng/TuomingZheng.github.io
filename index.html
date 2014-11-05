@@ -9,7 +9,9 @@
   <meta name="author" content="TuomingZheng">
 
   
-  <meta name="description" content="垃圾收集器是虚拟机内存回收的具体实现，不同Java虚拟机的垃圾收集器存在很大的区别。用户甚至可以组合各个年代所使用的垃圾收集器。 接下来将分别列出常见的几个垃圾收集器原理以及他们的特点。` Serial收集器 Serial收集器是历史最为悠久的垃圾收集器，这个收集器是一个单线程的垃圾收集器。 &hellip;">
+  <meta name="description" content="Android设备的Rooting的比较常用的操作，Rooting的目的是取得目标设备上的超级用户权限。一旦拥有超级用户
+权限可以进行很多令人惊奇的操作。为此有必要了解一下Android设备的存储分区，启动过程和历史上一些Rooting
+的原理。 Android设备存储分区 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +66,192 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-05T23:51:48+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>Android设备的Rooting的比较常用的操作，Rooting的目的是取得目标设备上的超级用户权限。一旦拥有超级用户
+权限可以进行很多令人惊奇的操作。为此有必要了解一下Android设备的存储分区，启动过程和历史上一些Rooting
+的原理。</p></blockquote>
+
+<h1>Android设备存储分区</h1>
+
+
+<p>
+存储分区是Android设备的逻辑存储单元，存储布局包括各种分区在存储器上排列顺序、偏移量和大小等内容。存储
+布局通常是由Boot Loader进行处理，但也有一部分设备是由Android系统的Kernel进行处理。各个设备厂商的存储器
+分区布局一般是不同的，但是Android设备一部分存储分区必须是固定的。
+</p>
+
+
+<h2>Android设备NAND FLASH分区</h2>
+
+
+<p>Android设备的NAND FLASH必须遵循特定的分区布局，他们的布局如下：
+<li>
+boot loader分区: 该分区存储设备的Boot loader程序，boot loader程序用来初始化设备硬件、启动系统Kernel和实
+现一些特定到启动模式
+</li>
+<li>
+Splash分区： 该分区存储设备的启动时显示的图片，但一部分设备厂商将启动图片设置在boot loader程序内所以
+这个分区可能没有。
+</li>
+<li>
+boot分区： 该分区存放Android系统启动镜像，包括Android系统的Kernel(zImage)和根文件系统。
+</li>
+<li>
+recovery分区： 该分区存放简化的Android系统启动镜像，该镜像仅仅包含Kernel镜像和recovery根文件系统。
+</li>
+<li>
+system分区：该分区保存Android系统镜像，系统镜像包括Framework、libraries(库)、系统可执行程序和设备预装
+程序。该分区将挂载到设备系统上的“/system”目录。
+</li>
+<li>
+userdata分区：该分区也被称为数据分区，设备上应用程序的数据以及文件等将保存在该分区上，在启动后的设备上
+该分区将被挂载到“/data”目录上。
+</li>
+<li>
+cache分区：该分区存诸如recover日志文件，packages更新文件等放实用文件。如果设备将packages安装在SD卡上将
+在分区内创建一个dalvik-cache目录。
+</li>
+<li>
+radio分区：该分区存放基带镜像。
+</li></p>
+
+<h2>设备分区查看</h2>
+
+
+<p>
+可以使用cat命令查看“/proc/partitions”查看设备的分区情况，也可以查看/dev/block/platform/目录下的“by-name”
+目录内的文件。
+</p>
+
+
+<p>
+以下是在Google Nexus4设备（Android4.4系统）上查看“partition”情况：</br>
+<img class="center" src="/images/android_proc_partitions.png" title="" >
+</p>
+
+
+<p>
+以下是查看“by-name”目录内文件情况Google Nexus4：</br>
+<img class="center" src="/images/android-dev-block-by-name.png">
+</p>
+
+
+
+
+<h1>Android设备启动过程概述</h1>
+
+
+<p>
+设备开启最先运行的程序是Boot Loader，该程序一般是由设备厂商提供的。Boot loader程序的功能一般是初始化底层
+硬件，包括RAM存储、系统时钟和启动媒体等。Boot Loader同时为加载recovery镜像和设置设备进入下载模式提供支持。
+</p>
+
+
+<p>
+在Boot Loader初始化好设备硬件后将Android系统的Kernel从外设boot分区加载到RAM中，接下来将执行控制权交给Android
+系统的Kernel。Android内核将为系统初始化各种运行条件，启动各种系统运行所必须的系统服务等。这些包括内存初始化，
+内存保护初始化、中断处理程序初始化、加载设备驱动程序等。最后内核将挂载根文件系统、启动“init”进程，“init”进程
+是用户空间内所有进程的父进程。“init”进程通过解析“init.rc”和&#8221;init_hw_.rc&#8221;配置脚本启动用户空间内的各种系统服务
+和组件。“init”进程启动的进程包括Android Debug Bridge守护进程、Zygote进程初始化Java运行环境，SystemServer进程
+等。在SystemServer进程内的ActivityManagerService的<code>systemReady()</code>方法内将发送“ACTION_BOOT_COMPLETED”
+广播等。
+</p>
+
+
+<h2>进入下载模式</h2>
+
+
+<p>
+当设备处于下载模式时我们可以修改外围存储设备内容，包括擦除设备的分区、执行另一个内核镜像等。擦除操作一般可以
+通过“fastboot”协议实现，各个设备厂商使用的协议可能不同。各个设备进入下载模式的按键操作不太一样，这是有设备的
+Boot Loader程序决定的。
+</p>
+
+
+<p>
+例如Google Nexus4设备需要在设备关机时同时按下音量减小键和启动键，该设备的下载模式显示如下：</br>
+</p>
+
+
+<p><img class="center" src="/images/google_nexus4_download_mode.png"></p>
+
+<h1>BootLoaders加锁与解锁</h1>
+
+
+<p>
+加锁的Boot Loader限制用户修改设备的固件，这些限制大多数是通过加密签名验证限制用户启动或则刷未经过认证的程序
+到设备上。Google Nexus系列设备的Boot Loader默认是锁定的，如果用户希望运行一个定制的内核、recovery镜像或则操作
+系统镜像那么必须先将Boot Loader解锁。各个设备厂商针对各自不同型号的设备提供不同解锁Boot Loader的方法，大多数
+是设置设备进入FastBoot模式然后使用Android SDK提供的“fastboot”程序运行<code>fastboot oem unlock</code>命令。
+</p>
+
+
+<p>
+一个Android设备的Boot Loader一旦解锁就会带来安全问题，如果你的设备丢失那么攻击者可以通过向你的设备刷入定制的
+recovery镜像就可以访问设备上的所有数据包括Google账户、联系人等等。
+</p>
+
+
+
+
+<h2>Stock Recovery镜像和Custom Recovery镜像</h2>
+
+
+<p>
+Android的recovery系统负责在不擦除用户数据的情况下更新整个系统预装的应用程序的功能。Recovery除了支持OTA更新外也
+支持擦除用户数据和cache分区。Recovery镜像存放在设备的recovery分区，该镜像文件仅仅包含最小的Linux镜像用于实现通
+过物理按钮控制功能。用户可以通过使用物理按键的特定组合进入recovery模式或则通过adb程序的reboot recovery命令进入
+Recovery模式。
+</p>
+
+
+<p>
+    Stock recovery镜像是Android开发主分支上的，他一般需要保持前后的兼容性。而Custom Recovery镜像（定制的
+Recovery镜像）很多，一般修改内容/br>
+</p>
+
+
+<p><li>选择性的挂载特定的分区</li>
+<li>使用USB访问SD或则NAND FLASH分区</li>
+<li>提供adb访问，adbd以超级用户运行</li>
+<li>包含完全的备份和恢复功能</li></p>
+
+<h1>Boot Loader解锁状态下的Rooting</h1>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1312,6 +1500,10 @@ bzip2 [-cdkvz#] 待处理文件名<br/>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
       </li>
     
@@ -1325,10 +1517,6 @@ bzip2 [-cdkvz#] 待处理文件名<br/>
     
       <li class="post">
         <a href="/blog/2014/11/05/java-virutal-machinenei-cun-qu-yu/">Java Virutal Machine内存区域</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/05/swipelistviewyuan-ma-fen-xi-zhi-swipelistviewtouchlistener/">SwipeListView源码分析之SwipeListViewTouchListener</a>
       </li>
     
   </ul>
