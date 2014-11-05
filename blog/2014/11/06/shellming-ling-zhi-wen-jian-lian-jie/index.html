@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Shell命令之文件链接 - 郑拓铭博客</title>
+  <meta name="author" content="TuomingZheng">
+
+  
+  <meta name="description" content="系统上文件链接有点儿恼人，经常无法正常解释它们的区别！好吧，其实理解了他们的原理那么他们也没那么容易混淆了！ 在Linux系统上存在这两种文件链接方式，他们分别是硬链接和软链接，其中软链接也称为符号链接。其实硬链接和
+软链接之间还是存在不少差别，由于硬链接存在着一些限制， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://TuomingZheng.github.io/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="郑拓铭博客" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">郑拓铭博客</a></h1>
+  
+    <h2>记忆、学习、思索、积累</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:TuomingZheng.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Shell命令之文件链接</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-06T00:12:51+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><blockquote><p>系统上文件链接有点儿恼人，经常无法正常解释它们的区别！好吧，其实理解了他们的原理那么他们也没那么容易混淆了！</p></blockquote>
+
+<p><p>在Linux系统上存在这两种文件链接方式，他们分别是硬链接和软链接，其中软链接也称为符号链接。其实硬链接和
+软链接之间还是存在不少差别，由于硬链接存在着一些限制，相对来讲软链接的使用范围更广一些。硬链接不能跨文件系统
+而符号链接却没有这个限制，同时硬链接无法实现对目录的链接。这些限制都大大的降低了硬链接的使用范围。
+<p>
+<li>硬链接：</li> <br/>
+<p>硬链接的本质并非是创建一个新的文件，而是在目录中添加了一个链接文件名，该链接文件名指向被链接文件的inode节点。
+所以在使用ls命令查看链接文件和被链接的文件将会发现，他们的文件属性、权限和链接情况一模一样。在删除硬链接文件时
+只有在被链接文件对应的inode中记录的链接数量为1时才会真正删除文件。
+</p>
+硬链接存在的限制为： 无法在不同文件系统中创建硬链接、无法为目录创建硬链接。</p>
+
+<p><li>符号链接：</li>  <br/>
+<p>
+符号链接的原理与Windows下的快捷方式有些相似，符号链接可是真真切切的创建一个链接文件。这个链接文件有自己的inode
+节点和磁盘数据块。不过这个链接文件的数据内容仅仅是存放被链接文件的路径，在用户访问链接文件时转向为对被链接文件
+的访问。所以，用户将被链接文件删除后，将无法打开链接文件。使用ls命令查看链接文件和被链接文件可以发现他们的
+inode节点是不一样的。
+</p></p>
+
+<p><p>创建链接命令：
+ln  [-sf] 被链接文件 链接文件<br/>
+-s 创建符号链接<br/>
+-f 链接文件名已经存在，将其删除在创建链接文件<br/>
+</p></p>
+
+<pre><code>例子：   $ cp /tmp       &lt;&lt;== 进入tmp目录  
+        $ cp /etc/manpath.config .  &lt;&lt;== 将etc目录下的manpath.config拷贝到当前目录  
+        $ ln manpath.config manpath_hl.config   &lt;&lt;== 创建硬链接manpath_hl.config  
+        $ rm -f manpath.config                  &lt;&lt;== 删除被链接文件，硬链接文件依然存在
+        $ cat manpath.config                    &lt;&lt;== 可以查看文件内容，文件并未被真正删除  
+        $ rm -f manpath_hl.config               &lt;&lt;== 删除硬链接文件  
+        $ 
+        $ cp /etc/manpath.config .
+        $ ln -s manpath.config manpath_sl.config    &lt;&lt;== 创建符号链接文件manpath_sl.config  
+        $ cat manpath_sl.config                     &lt;&lt;== 可以看到文件内容
+        $ rm -f manpath.config                      &lt;&lt;== 删除被链接文件  
+        $ cat manpath_sl.config                     &lt;&lt;== 无法读取文件
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">TuomingZheng</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-06T00:12:51+08:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/shellming-ling/'>shell命令</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/" title="Previous Post: Shell命令之备份与恢复">&laquo; Shell命令之备份与恢复</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/">Shell命令之文件链接</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/">Shell命令之备份与恢复</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinenei-cun-fen-pei/">Java Virtual Machine内存分配</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - TuomingZheng -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
