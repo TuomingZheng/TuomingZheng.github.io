@@ -4,7 +4,7 @@
   <title><![CDATA[郑拓铭博客]]></title>
   <link href="http://TuomingZheng.github.io/atom.xml" rel="self"/>
   <link href="http://TuomingZheng.github.io/"/>
-  <updated>2014-11-05T23:14:41+08:00</updated>
+  <updated>2014-11-05T23:20:44+08:00</updated>
   <id>http://TuomingZheng.github.io/</id>
   <author>
     <name><![CDATA[TuomingZheng]]></name>
@@ -12,6 +12,95 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Java Virutal Machine内存区域]]></title>
+    <link href="http://TuomingZheng.github.io/blog/2014/11/05/java-virutal-machinenei-cun-qu-yu/"/>
+    <updated>2014-11-05T23:19:55+08:00</updated>
+    <id>http://TuomingZheng.github.io/blog/2014/11/05/java-virutal-machinenei-cun-qu-yu</id>
+    <content type="html"><![CDATA[<blockquote><p>Java虚拟机自动内存管理技术使得我们不用再像使用C++那样纠结于内存分配回收问题。但是这并不意味着Java程序不存在内存泄漏问题。
+而在Java程序内存泄漏时，我们必须清楚了解Java虚拟机的内存区域才能高效的解决掉内存泄漏问题和OOM问题。</p></blockquote>
+
+<h1>Java虚拟机运行时数据区域</h1>
+
+
+<p>
+    Java虚拟机将Java程序运行时的内存区域划分为若干个不同类型的区域。这些区域的用途、创建时间和销毁时间都有各自的特点，有些
+是与线程的生命周期紧密相关的，而有些数据区域却与进程的生命周期相关的。接下来将按照区域的创建和销毁的时间，分别罗列这些区域：
+</p>
+
+
+
+
+<ul>
+    <h2>线程私有的内存区域</h2>
+    <li>
+        程序计数器
+    </li>
+    <p>
+        程序计数器(PC)是当前线程所执行的字节码行号指示器，它是一块较小的内存区域。该内存区域为各个线程所有，每个线程的程序
+        计数器互不影响对方，在切换线程执行时也将切换线程计数器。这里的程序计数器仅仅指向Java程序对应的字节码行号，在程序执行
+        native代码时，程序计数器的值为空。
+    </p>
+    <li>Java虚拟机栈</li>
+    <p>
+        Java虚拟机栈也是线程私有的内存区域，每个Java方法在执行时都会在该执行线程的Java虚拟机栈内创建一个栈帧并且其push为栈
+        顶元素，在方法执行结束时该栈帧pop出执行线程的Java虚拟机栈。Java方法的栈帧内包含有局部变量表、操作数栈、动态链接和
+        方法返回地址等信息。
+    </p>
+    <p>
+        Java虚拟机栈常见的异常有StackOverflowError和OutOfMemoryError两种，其中如果线程请求的栈的深度超过Java虚拟机所允许的
+        最大深度将抛出StackOverflowError，程序中如果存在方法的递归调用并且无法满足递归出口条件时会导致该问题发生。如果Java
+        虚拟机栈运行动态扩展的话，在Java虚拟机栈无法得到内存空间进行扩展时将会抛出OutOfMemoryError异常。
+    </p>
+    <li>本地方法栈</li>
+    <p>
+        本地方法栈与Java虚拟机栈的区别是本地方法栈是为native方法服务的，本地方法栈也有StackOverflowError和OutOfMemoryError
+        两个异常情形。在一些虚拟机中甚至将Java虚拟机栈和本地方法栈合二为一。
+    </p>
+
+    <p>
+        以上这些虚拟机内存区域都是线程私有的，不同的线程将拥有不同的内存区域。直观的说分配在这些区域的数据不可能被多个用户
+        线程所共享，也就不存在并发同步引起的问题了。
+    </p>
+</ul>
+
+
+
+
+<ul>
+    <h2>进程所有的内存区域</h2>
+    <li>Java堆</li>
+    <p>
+        Java堆是Java应用程序内使用空间比较大的一块内存区域，该内存区域的生命周期与进程是同步的。在虚拟机启动是创建该区域，该
+        区域的目的是存放Java对象。Java堆空间可以实现为固定大小，也可以实现为可以动态扩展。实现为动态扩展时可以通过-Xmx和-Xms
+        配置Java堆空间的最大值和最小值，在无法使用堆空间为Java对象分配空间时将抛出OutOfMemoryError异常。这里所讨论的Java堆空
+        间只是操作系统的虚拟地址空间，对于实现虚拟内存功能的操作系统来说，给Java堆分配的物理地址空间可能是不连续的。
+    </p>
+    <li>方法区</li>
+    <p>
+        在Java虚拟机规范里将方法区列为Java堆的一部分，方法区的一个别名是Non-Heap。方法区是各个用户线程共享的内存区域，所以存储
+        在该区域的数据在多线程并发时也会有同步问题。该区域用于存储被虚拟机加载的类信息、常量、静态变量和编译后形成的代码。方法
+        区也不需要连续的内存空间，支持固定大小和可动态扩张两种方式，甚至可以选择不同的垃圾回收机制。该内存区域的垃圾收集主要是
+        针对常量池和类型的卸载。在无法继续分配方法区空间时也将抛出OutOfMemoryError。
+    </p>
+    <li>运行时常量池</li>
+    <p>
+        运行时常量池是方法区的一部分，该区域存放的是类加载进虚拟机时class文件内的常量池，主要是编译形成的字面量和符号引用。运行
+        时常量池与class文件内的常量池的区别是运行时常量池可以在程序运行期间将新的常量放入其中。运行时常量池受方法区的限制，在空
+        间不够分配时也将抛出OutOfMemoryError。
+    </p>
+    <li>直接内存</li>
+    <p>
+        直接内存不是Java虚拟机运行时数据区的一部分，但这部分内存也会有OutOfMemoryError问题。这些主要是使用native函数直接分配Java
+        堆外的内存，比如Java NIO。直接内存不会受Java堆的大小限制但是会受操作系统为每个进程分配的地址空间大小的限制。
+    </p>
+</ul>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwipeListView源码分析之SwipeListViewTouchListener]]></title>
