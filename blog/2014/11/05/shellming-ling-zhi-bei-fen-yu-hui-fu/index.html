@@ -1,0 +1,282 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Shell命令之备份与恢复 - 郑拓铭博客</title>
+  <meta name="author" content="TuomingZheng">
+
+  
+  <meta name="description" content="备份是生活中比不可少的操作，如果在灾难发生时没有必要的备份那你将会欲哭无泪。Linux系统的Shell提供了强有力
+的备份工具dump,为此我们有必要来了解一下这个很酷的小伙子。@@ Linux上有个强大的备份工具，那就是使用dump命令。dump命令的功能十分强大， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://TuomingZheng.github.io/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="郑拓铭博客" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">郑拓铭博客</a></h1>
+  
+    <h2>记忆、学习、思索、积累</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:TuomingZheng.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Shell命令之备份与恢复</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-05T23:58:38+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><blockquote><p>备份是生活中比不可少的操作，如果在灾难发生时没有必要的备份那你将会欲哭无泪。Linux系统的Shell提供了强有力
+的备份工具dump,为此我们有必要来了解一下这个很酷的小伙子。@@</p></blockquote>
+
+<p>
+Linux上有个强大的备份工具，那就是使用dump命令。dump命令的功能十分强大，该命令不仅可以备份整个文件系统而且
+还可以备份指定的目录。不过dump命令在备份目录时存在一定的限制，那就是只能完整的备份整个目录，无法制定等级
+进行备份。
+</p>
+
+
+<p>
+下面将具体介绍使用dump进行文件系统备份和目录备份，以及他们的区别：  
+</p>
+
+
+<p><li>使用dump命令备份整个文件系统：</li></p>
+
+<p>
+使用dump命令备份整个文件系统时可以制定等级进行备份，也就是说我们可以在第一次备份指定文件系统时进行完整备份，
+在以后对同一个文件系统进行备份时只需要备份当前文件系统与以前备份之间差异就可以。这样就可以大大减轻备份文件
+对系统空间的使用量。
+</p>
+
+
+<pre><code>                    dump    [-Suvj#] [-f 生成的备份文件]  待备份文件  
+                            -S 查看备份指定文件需要的磁盘空间  
+                            -u 将本次进行备份的时间记录到/etc/dumpdates文件内  
+                            -v 查看dump备份过程中的信息  
+                            -# #代表数字0到9，这个参数一般在制定等级备份时使用  
+                            -f 备份产生的文件名称  
+
+                    dump -W &lt;&lt;== 该命令查看/etc/fstab内具有dump设置的分区是否备份过
+
+                    例子：   $ df -h &lt;&lt;== 找出最小的文件系统进行备份处理
+                            $ dump -0vj -f root.dump0 /     &lt;&lt;== 对root目录进行备份, 在这里
+                                                                 root目录是一个文件系统  
+                            $ touch new_file.txt            &lt;&lt;== 在根目录下新建一个文件  
+                            $ dump -1vj -f root.dump1 /     &lt;&lt;== 制定等级进行备份  
+</code></pre>
+
+<p><li>使用dump命令备份指定目录：</li></p>
+
+<p>
+使用dump命令备份目录存在一定的限制，例如无法使用-u、-#参数并且所有的备份数据必须在该目录下。  
+</p>
+
+
+<pre><code>                    dump    [-Svj] [-f 生成的备份文件]   待备份文件  
+                            -S  查看备份指定文件需要的磁盘空间  
+                            -v  显示备份过程中的信息  
+                            -j  数据使用bzip2进行压缩  
+                            -f  备份产生的文件名字  
+
+                    例子：   $ dump -S /etc  &lt;&lt;== 查看备份etc目录所需的磁盘空间  
+                            $ dump -0vj -f etc.dump /etc    &lt;&lt;== 对etc目录进行压缩备份  
+</code></pre>
+
+<p><li>使用restore命令进行恢复操作：</li></p>
+
+<pre><code>    restore用法：            restore -t [-f dumpfile] [-h]   &lt;&lt;== 查看dump文件  
+                            restore -C [-f dumpfile] [-D 挂载点] &lt;&lt;== 比较dump与实际文件  
+                            restore -i [-f dumpfile]                &lt;&lt;== 进入互动模式，可以  
+                                                                         进行部分文件还原  
+                            restore -r [-f dumpfile]        &lt;&lt;== 还原整个文件系统  
+
+                            其中-i一般进行目录的还原，而-r一般是进行文件系统的还原, -D参数表示  
+                        查看挂载点与dump内的不同文件  
+
+    例子：       $ restore -t -f etc.dump        &lt;&lt;== 查看etc.dump内备份含有的数据  
+                $ restore -i -f etc.dump        &lt;&lt;== 进入交互模式可以对目录进行部分还原   
+</code></pre>
+
+<p>
+其中restore的交互模式中可以使用add file、delete file和extract进行部分文件恢复的添加、删除和最终执行恢复操作。  
+</p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">TuomingZheng</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-05T23:58:38+08:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/shellming-ling/'>shell命令</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/11/05/androidshe-bei-rooting/" title="Previous Post: Android设备Rooting">&laquo; Android设备Rooting</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/">Shell命令之备份与恢复</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinenei-cun-fen-pei/">Java Virtual Machine内存分配</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinenei-cun-hui-shou-ji-zhi/">Java Virtual Machine内存回收机制</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - TuomingZheng -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
