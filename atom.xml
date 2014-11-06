@@ -4,7 +4,7 @@
   <title><![CDATA[郑拓铭博客]]></title>
   <link href="http://TuomingZheng.github.io/atom.xml" rel="self"/>
   <link href="http://TuomingZheng.github.io/"/>
-  <updated>2014-11-06T00:19:51+08:00</updated>
+  <updated>2014-11-06T23:26:04+08:00</updated>
   <id>http://TuomingZheng.github.io/</id>
   <author>
     <name><![CDATA[TuomingZheng]]></name>
@@ -12,6 +12,80 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Shell命令之磁盘分区]]></title>
+    <link href="http://TuomingZheng.github.io/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/"/>
+    <updated>2014-11-06T23:13:26+08:00</updated>
+    <id>http://TuomingZheng.github.io/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu</id>
+    <content type="html"><![CDATA[<p>
+在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
+磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
+在系统上创建挂载点并将其挂载起来。
+</p>
+
+
+<p>
+fdisk命令的具体用法如下：
+</p>
+
+
+<p>          <br/>
+    fdisk   [-l]    设备名称</br>
+        -l  在-l后面不带参数时将整个系统内的设备分区罗列出来，如果输入设备名称则将该设备上的分区
+            信息罗列出来</p>
+
+<pre><code>    例子：       $ sudo -s               &lt;&lt;== 切换到超级用户
+                # df /                  &lt;&lt;== 查看根目录所在的磁盘
+                # fdisk -l /dev/sda     &lt;&lt;== 查看/dev/sda设备的分区情况
+                # fdisk /dev/sda        &lt;&lt;== 进入设备/dev/sda的交互模式
+</code></pre>
+
+<p>
+在fdisk的交互模式中可以进行分区的添加、删除操作。在该模式里面有几个常用的命令如p查看设备的分区情况、d为删除
+一个分区、n为新增一个分区、q为退出模式并不保存分区设置和w为退出模式并保存分区设置。
+</p>
+
+
+<pre><code>例子：       
+        1. 删除分区：  
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 显示设备/dev/sda上的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，系统将提示输入待删除分区
+                                             的号码删除9代表删除/dev/sda9分区
+                        # q                 &lt;&lt;== 离开并且不保存刚才的分区设置
+
+        2. 添加分区：   
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 查看设备/dev/sda的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，在这里将所有的分区删除
+                        # n                 &lt;&lt;== 新建一个设备分区，系统将要求输入分区的类型。
+                        ：p                --&gt; primary partition   新建的主分区
+                          e                 --&gt; extended partition  新建的是扩展分区
+                          l                 --&gt; logical partition   新间的是逻分区
+
+                        : 设置分区号（例如1-4的数字等等）
+                        : 设置起始柱面号
+                        : 结束柱面号，可以手动输入结束柱面号或则(+#G|M|K)指定分区大小
+                            # p                 &lt;&lt;== 查看分区设置结果
+                            # q                 &lt;&lt;== 离开并不保存刚才设置的分区信息
+</code></pre>
+
+<p>
+在这里必须注意的是fdisk只能在root用户下进行分区的设置。在新建分区时系统将提示我们设置新分区的类型，而分区类型无非
+是主分区、扩展分区和逻辑分区。
+</p>
+
+
+<p>
+系统提示的分区规则如下：</br>
+<li>1.  1-4号分区尚未分配出去，并且系统没有扩展分区。这时将提示你选择主分区或则扩展分区。</li>
+<li>2.  1-4号分区尚为分配出去，并且系统存在扩展分区。这时将提示你选择主分区或则逻辑分区。</li>
+<li>3.  1-4号分区已经分配出去，系统将直接选择进行逻分区的创建。</li>
+</p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Shell命令之文件链接]]></title>

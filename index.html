@@ -9,8 +9,9 @@
   <meta name="author" content="TuomingZheng">
 
   
-  <meta name="description" content="系统上文件链接有点儿恼人，经常无法正常解释它们的区别！好吧，其实理解了他们的原理那么他们也没那么容易混淆了！ 在Linux系统上存在这两种文件链接方式，他们分别是硬链接和软链接，其中软链接也称为符号链接。其实硬链接和
-软链接之间还是存在不少差别，由于硬链接存在着一些限制， &hellip;">
+  <meta name="description" content="在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
+磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
+在系统上创建挂载点并将其挂载起来。 fdisk命令的具体用法如下： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +66,107 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/">Shell命令之磁盘分区</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-06T23:13:26+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>
+在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
+磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
+在系统上创建挂载点并将其挂载起来。
+</p>
+
+
+<p>
+fdisk命令的具体用法如下：
+</p>
+
+
+<p>          <br/>
+    fdisk   [-l]    设备名称</br>
+        -l  在-l后面不带参数时将整个系统内的设备分区罗列出来，如果输入设备名称则将该设备上的分区
+            信息罗列出来</p>
+
+<pre><code>    例子：       $ sudo -s               &lt;&lt;== 切换到超级用户
+                # df /                  &lt;&lt;== 查看根目录所在的磁盘
+                # fdisk -l /dev/sda     &lt;&lt;== 查看/dev/sda设备的分区情况
+                # fdisk /dev/sda        &lt;&lt;== 进入设备/dev/sda的交互模式
+</code></pre>
+
+<p>
+在fdisk的交互模式中可以进行分区的添加、删除操作。在该模式里面有几个常用的命令如p查看设备的分区情况、d为删除
+一个分区、n为新增一个分区、q为退出模式并不保存分区设置和w为退出模式并保存分区设置。
+</p>
+
+
+<pre><code>例子：       
+        1. 删除分区：  
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 显示设备/dev/sda上的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，系统将提示输入待删除分区
+                                             的号码删除9代表删除/dev/sda9分区
+                        # q                 &lt;&lt;== 离开并且不保存刚才的分区设置
+
+        2. 添加分区：   
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 查看设备/dev/sda的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，在这里将所有的分区删除
+                        # n                 &lt;&lt;== 新建一个设备分区，系统将要求输入分区的类型。
+                        ：p                --&gt; primary partition   新建的主分区
+                          e                 --&gt; extended partition  新建的是扩展分区
+                          l                 --&gt; logical partition   新间的是逻分区
+
+                        : 设置分区号（例如1-4的数字等等）
+                        : 设置起始柱面号
+                        : 结束柱面号，可以手动输入结束柱面号或则(+#G|M|K)指定分区大小
+                            # p                 &lt;&lt;== 查看分区设置结果
+                            # q                 &lt;&lt;== 离开并不保存刚才设置的分区信息
+</code></pre>
+
+<p>
+在这里必须注意的是fdisk只能在root用户下进行分区的设置。在新建分区时系统将提示我们设置新分区的类型，而分区类型无非
+是主分区、扩展分区和逻辑分区。
+</p>
+
+
+<p>
+系统提示的分区规则如下：</br>
+<li>1.  1-4号分区尚未分配出去，并且系统没有扩展分区。这时将提示你选择主分区或则扩展分区。</li>
+<li>2.  1-4号分区尚为分配出去，并且系统存在扩展分区。这时将提示你选择主分区或则逻辑分区。</li>
+<li>3.  1-4号分区已经分配出去，系统将直接选择进行逻分区的创建。</li>
+</p>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1283,206 +1385,6 @@ SWIPE_ACTION_CHOICE。</br>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2014/11/05/androidkai-yuan-zu-jian-zhi-swipelistview/">Android开源组件之SwipeListView</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2014-11-05T22:56:57+08:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><blockquote><p><p>SwipeListView是最近比较火的一个开源组件，用于实现ListView元素側滑的功能。SwipeListView的使用还是比较简单的。</p></p></blockquote>
-
-<h1>自定义属性</h1>
-
-
-<p>首先需要认识SwipeListView的几个自定义属性，他们定义在swipelistview__attrs.xml文件内。</p>
-
-
-<pre><code>    &lt;declare-styleable name="SwipeListView"&gt;
-        &lt;attr name="swipeOpenOnLongPress" format="boolean" /&gt;
-        &lt;attr name="swipeAnimationTime" format="integer" /&gt;
-        &lt;attr name="swipeOffsetLeft" format="dimension" /&gt;
-        &lt;attr name="swipeOffsetRight" format="dimension" /&gt;
-        &lt;attr name="swipeCloseAllItemsWhenMoveList" format="boolean" /&gt;
-        &lt;attr name="swipeFrontView" format="reference" /&gt;
-        &lt;attr name="swipeBackView" format="reference" /&gt;
-        &lt;attr name="swipeMode" format="enum"&gt;
-            &lt;enum name="none" value="0" /&gt;
-            &lt;enum name="both" value="1" /&gt;
-            &lt;enum name="right" value="2" /&gt;
-            &lt;enum name="left" value="3" /&gt;
-        &lt;/attr&gt;
-        &lt;attr name="swipeActionLeft" format="enum"&gt;
-            &lt;enum name="reveal" value="0" /&gt;
-            &lt;enum name="dismiss" value="1" /&gt;
-            &lt;enum name="choice" value="2" /&gt;
-        &lt;/attr&gt;
-        &lt;attr name="swipeActionRight" format="enum"&gt;
-            &lt;enum name="reveal" value="0" /&gt;
-            &lt;enum name="dismiss" value="1" /&gt;
-            &lt;enum name="choice" value="2" /&gt;
-        &lt;/attr&gt;
-        &lt;attr name="swipeDrawableChecked" format="reference" /&gt;
-        &lt;attr name="swipeDrawableUnchecked" format="reference" /&gt;
-    &lt;/declare-styleable&gt;
-</code></pre>
-
-<p>SwipeListView自定义属性具体说明如下：</p>
-
-
-<ul>
-    <li>第一个属性swipeOpenOnLongPress表示当前的SwipeListView是否支持长按某个元素进行滑动或则切换操作，他的取值为布尔类型。</li>
-    <li>第二个属性swipeAnimationTime用来设置SwipeListView元素側滑或则进行checked状态切换的动画时间，如果不设置该属性的值SwipeListViewTouchListener
-        会将其设置为Android系统内的标准动画时间（short类型）。</li>
-    <li>第三个属性swipeOffsetLeft用于设置SwipeListView左滑停止后裸露在可见区域内的长度。</li>
-    <li>第四个属性swipeOffsetRight为SwipeListView右滑动停止后裸露在可见区域内的长度。</li>
-    <li>第五个属性swipeFrontView和swipeBackView分别指定swipeListView在滑动是处于前台和后台的组件。</li>
-    <li>第六个属性swipeMode用于设置SwipeListView的滑动方向，其类型为枚举类型，分别可以取值为left(向左)、right（向右）、both（双向）和none(滑不动)。</li>
-    <li>第七个属性swipeActionLeft和swipeActionRight分别用于指示SwipeListView左滑动和右滑动是的行为，其中reveal为FronView可见平滑滑动，
-        dismiss为FrontView平滑滑动并伴随ListView元素alpha的渐变，最后choice取值则指定了FrontView滑动是切换checked状态值。</li>
-    <li>最后一组属性swipeDrawableChecked和swipeDrawableUnchecked只有在mode取值为checked时有效，分别设置SwipeListView的元素在checked状态下的背景图片。</li>
-</ul>
-
-
-
-
-<h2>使用示例</h2>
-
-
-<p></p>
-
-<p>具体在使用SwipeListView时只需要配置这几个属性值即可，在SwipeListView中也实现了代码设置对应属性的方法。其他的用法和ListView大同小异，唯一需要注意的是
-SwipeListView对应的Adapter的Item布局必须实现FrontView和BackView并且FrontView最好罩在BackView之上。</p>
-
-
-<p><li>SwipeListView在Activity布局文件内的声明：</li></p>
-
-<pre><code>        &lt;com.fortysevendeg.swipelistview.SwipeListView
-            android:id="@+id/swipelistview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            SwipeListView:swipeActionLeft="reveal"
-            SwipeListView:swipeActionRight="reveal"
-            SwipeListView:swipeAnimationTime="@android:integer/config_shortAnimTime"
-            SwipeListView:swipeBackView="@+id/back_item"
-            SwipeListView:swipeCloseAllItemsWhenMoveList="false"
-            SwipeListView:swipeDrawableChecked="@drawable/address_check_d"
-            SwipeListView:swipeDrawableUnchecked="@drawable/address_check"
-            SwipeListView:swipeFrontView="@+id/front_item"
-            SwipeListView:swipeMode="left"
-            SwipeListView:swipeOffsetLeft="10dp"
-            SwipeListView:swipeOffsetRight="10dp"
-            SwipeListView:swipeOpenOnLongPress="false"
-            android:divider="#FF0000" &gt;
-        &lt;/com.fortysevendeg.swipelistview.SwipeListView&gt;
-</code></pre>
-
-<p><li> SwipeListView对应的Adapter的元素的布局：</li>
-                &lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
-                <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp" ></p>
-
-<pre><code>                    &lt;RelativeLayout
-                            android:id="@+id/back_item"
-                            android:layout_width="match_parent"
-                            android:layout_height="200dp" &gt;
-
-                        &lt;Button
-                            android:id="@+id/delete_button"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentRight="true"
-                            android:text="Delete" /&gt;
-                    &lt;/RelativeLayout&gt;
-
-
-                    &lt;RelativeLayout
-                            android:id="@+id/front_item"
-                            android:layout_width="match_parent"
-                            android:layout_height="200dp"
-                            android:background="#FF0000FF" &gt;
-
-                            &lt;ImageView
-                                android:id="@+id/account_icon_view"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentLeft="true"
-                                android:layout_centerVertical="true"
-                                android:layout_marginLeft="5dp"
-                                android:layout_marginRight="5dp"
-                                android:background="@null"
-                                android:src="@drawable/ic_launcher" /&gt;
-
-                            &lt;TextView
-                                android:id="@+id/account_time_view"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentRight="true"
-                                android:layout_centerVertical="true"
-                                android:gravity="center"
-                                android:paddingLeft="5dp"
-                                android:paddingRight="5dp"
-                                android:textSize="18sp" /&gt;
-
-                            &lt;TextView
-                                android:id="@+id/account_name_view"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_toLeftOf="@id/account_time_view"
-                                android:layout_toRightOf="@id/account_icon_view"
-                                android:gravity="center"
-                                android:textSize="18sp" /&gt;
-
-                            &lt;TextView
-                                android:id="@+id/account_id_view"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_below="@id/account_name_view"
-                                android:layout_toLeftOf="@id/account_time_view"
-                                android:layout_toRightOf="@id/account_icon_view"
-                                android:gravity="center"
-                                android:textSize="18sp" /&gt;
-                    &lt;/RelativeLayout&gt;
-
-            &lt;/FrameLayout&gt;
-</code></pre>
-
-<p><li>注意事项：</li></p>
-
-<p>在SwipeListView的Adapter元素的布局内必须实现SwipeListView的自定义属性frontView和backView，并且最好将frontView覆盖在backview是以实现滑动时backView渐显效果。
-SwipeListView比较恶心的地方是监听器SwipeListViewListener内的<code>onChangeSwipeMode()</code>方法必须返回在activity布局文件内声明的action类型。</p>
-
-
-<p><img class="left" src="/images/SwipeList.png"></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -1498,6 +1400,10 @@ SwipeListView比较恶心的地方是监听器SwipeListViewListener内的<code>o
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/">Shell命令之磁盘分区</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/">Shell命令之文件链接</a>
       </li>
     
@@ -1511,10 +1417,6 @@ SwipeListView比较恶心的地方是监听器SwipeListViewListener内的<code>o
     
       <li class="post">
         <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/05/java-virtual-machinenei-cun-fen-pei/">Java Virtual Machine内存分配</a>
       </li>
     
   </ul>

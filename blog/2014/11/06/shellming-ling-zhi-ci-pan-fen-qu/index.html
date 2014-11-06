@@ -1,0 +1,273 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Shell命令之磁盘分区 - 郑拓铭博客</title>
+  <meta name="author" content="TuomingZheng">
+
+  
+  <meta name="description" content="在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
+磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
+在系统上创建挂载点并将其挂载起来。 fdisk命令的具体用法如下： &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://TuomingZheng.github.io/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="郑拓铭博客" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">郑拓铭博客</a></h1>
+  
+    <h2>记忆、学习、思索、积累</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:TuomingZheng.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Shell命令之磁盘分区</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-06T23:13:26+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>
+在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
+磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
+在系统上创建挂载点并将其挂载起来。
+</p>
+
+
+<p>
+fdisk命令的具体用法如下：
+</p>
+
+
+<p>          <br/>
+    fdisk   [-l]    设备名称</br>
+        -l  在-l后面不带参数时将整个系统内的设备分区罗列出来，如果输入设备名称则将该设备上的分区
+            信息罗列出来</p>
+
+<pre><code>    例子：       $ sudo -s               &lt;&lt;== 切换到超级用户
+                # df /                  &lt;&lt;== 查看根目录所在的磁盘
+                # fdisk -l /dev/sda     &lt;&lt;== 查看/dev/sda设备的分区情况
+                # fdisk /dev/sda        &lt;&lt;== 进入设备/dev/sda的交互模式
+</code></pre>
+
+<p>
+在fdisk的交互模式中可以进行分区的添加、删除操作。在该模式里面有几个常用的命令如p查看设备的分区情况、d为删除
+一个分区、n为新增一个分区、q为退出模式并不保存分区设置和w为退出模式并保存分区设置。
+</p>
+
+
+<pre><code>例子：       
+        1. 删除分区：  
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 显示设备/dev/sda上的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，系统将提示输入待删除分区
+                                             的号码删除9代表删除/dev/sda9分区
+                        # q                 &lt;&lt;== 离开并且不保存刚才的分区设置
+
+        2. 添加分区：   
+                        # fdisk /dev/sda    &lt;&lt;== 进入设备/dev/sda的设置模式
+                        # p                 &lt;&lt;== 查看设备/dev/sda的分区情况
+                        # d                 &lt;&lt;== 删除/dev/sda上的分区，在这里将所有的分区删除
+                        # n                 &lt;&lt;== 新建一个设备分区，系统将要求输入分区的类型。
+                        ：p                --&gt; primary partition   新建的主分区
+                          e                 --&gt; extended partition  新建的是扩展分区
+                          l                 --&gt; logical partition   新间的是逻分区
+
+                        : 设置分区号（例如1-4的数字等等）
+                        : 设置起始柱面号
+                        : 结束柱面号，可以手动输入结束柱面号或则(+#G|M|K)指定分区大小
+                            # p                 &lt;&lt;== 查看分区设置结果
+                            # q                 &lt;&lt;== 离开并不保存刚才设置的分区信息
+</code></pre>
+
+<p>
+在这里必须注意的是fdisk只能在root用户下进行分区的设置。在新建分区时系统将提示我们设置新分区的类型，而分区类型无非
+是主分区、扩展分区和逻辑分区。
+</p>
+
+
+<p>
+系统提示的分区规则如下：</br>
+<li>1.  1-4号分区尚未分配出去，并且系统没有扩展分区。这时将提示你选择主分区或则扩展分区。</li>
+<li>2.  1-4号分区尚为分配出去，并且系统存在扩展分区。这时将提示你选择主分区或则逻辑分区。</li>
+<li>3.  1-4号分区已经分配出去，系统将直接选择进行逻分区的创建。</li>
+</p>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">TuomingZheng</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-06T23:13:26+08:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/shellming-ling/'>shell命令</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/" title="Previous Post: Shell命令之文件链接">&laquo; Shell命令之文件链接</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/">Shell命令之磁盘分区</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/">Shell命令之文件链接</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/">Shell命令之备份与恢复</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - TuomingZheng -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
