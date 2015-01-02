@@ -9,9 +9,8 @@
   <meta name="author" content="TuomingZheng">
 
   
-  <meta name="description" content="在Linux上我们经常进行磁盘管理，磁盘管理是系统管理者比较重要的内容。在系统上增加一块磁盘时一般的步骤是先对
-磁盘进行分区建立可用的分区、对新建的磁盘分区进行格式化创建可用的文件系统、对刚建立好的文件系统进行检验最后
-在系统上创建挂载点并将其挂载起来。 fdisk命令的具体用法如下： &hellip;">
+  <meta name="description" content="SQLite3数据库的文件锁机制与并发是一个很有趣话题，只有在深入了解SQLite3数据库文件锁的机制才能
+在工作中快速解决多线程或则多进程并发引起的数据库锁问题。在本文档内并不涉及SQLite3WAL模式下的机制。 SQLite3文件锁与并发概述 相对于原来SQLite2， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +65,278 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/11/07/sqlite3wen-jian-suo-yu-bing-fa-kong-zhi/">SQLite3文件锁与并发控制</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-11-07T20:39:56+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>SQLite3数据库的文件锁机制与并发是一个很有趣话题，只有在深入了解SQLite3数据库文件锁的机制才能
+在工作中快速解决多线程或则多进程并发引起的数据库锁问题。在本文档内并不涉及SQLite3WAL模式下的机制。</p></blockquote>
+
+<h1>SQLite3文件锁与并发概述</h1>
+
+
+<p>
+相对于原来SQLite2，SQLite3引入了新的文件锁机制和日志机制，大大加强了SQLite数据库的并发能力减少了写“饥饿”现象的发生。
+同时新的机制也实现了多个数据库文件事务提交的原子性。
+</p>
+
+
+<p>
+锁和并发控制是由称为“pager”的模块来处理的，该模块负责SQLite数据库&#8221;ACID&#8221;的实现。该模块保证了所有的变化一次性全部发生，
+这些变化要么全部发生或则全部不发生。保证多个线程或则进程不以不兼容的方式同时访问数据库，一旦变化提交将会一直存在直到
+显式删除。
+</p>
+
+
+<p>
+站在pager的角度来看，数据库是由一系列统一大小的块组成的文件，每个块大小是1024字节，这个块也被成为“page”(页)。文件内页是
+从1开始计数，所以文件的头1024个字节为文件的第一页。&#8221;pager&#8221;模块高效的控制着多进程或则多线程对数据库文件的访问。
+</p>
+
+
+<h1>SQLite3文件锁状态</h1>
+
+
+<p>
+SQLite数据库主要由以下几种锁状态：
+</p>
+
+
+<p><li>UNLOCKED状态</li></p>
+
+<p>
+这时数据库没有处于锁状态，数据库可以进行读或则写。内部缓存的数据在使用之前必须通过校验，进程可以使用本进程内允许的锁对
+数据库进行读或则写。
+</p>
+
+
+<p><li>SHARED状态</li></p>
+
+<p>
+这时数据库可以进行读操作但不能进行写操作。在同一时间内多个线程可以持有SHARED锁，所以可以有多个线程进行读操作。但是处于
+该状态下不允许其他线程进行写操作。
+</p>
+
+
+<p><li>RESERVED状态</li></p>
+
+<p>
+RESERVED锁说明线程打算在将来的某个时间点进行写操作，但是目前正对数据库文件进行读操作。在同一时间点只允许一个RESERVED锁
+的存在，但是允许多个SHARED锁与一个RESERVED锁同时存在。RESERVED锁与PENDING锁的区别是, RESERVED锁允许其他线程加SHARED锁。
+</p>
+
+
+<p><li>PENDING状态</li></p>
+
+<p>
+PENDING锁意味着持有该锁的进程希望尽快进行写操作，该进程在等待当前所有的SHARED锁的清除以便获取EXCLUSIVE锁。如果当前存在
+PENDING锁那么不允许添加SHARED锁，但是已经处于激活状态的SHARED锁则允许继续存在以便结束读操作。
+</p>
+
+
+<p><li>EXCLUSIVE状态</li></p>
+
+<p>
+对数据库文件进行写操作时必须持有该锁，文件只允许一个EXCLUSIVE锁存在不允许其他任何锁的存在。为了最大程度的并发，SQLite实
+现了EXCLUSICE锁持有时间的最小化。
+</p>
+
+
+<p><em>操作系统层面负责跟踪上述几种锁状态，而&#8221;pager&#8221;模块则只能感知到以上五种中的四种，PENDING锁状态是
+获取EXCLUSIVE锁的中间时过程所以“pager”模块并不会跟踪PENDING锁状态。</em></br></p>
+
+<h1>回滚日志</h1>
+
+
+<p>
+当进程想要进行写操作时，首先会将数据库文件中为变化的内容写到日志文件内。回滚日志文件是一个普通的磁盘文件，通常和数据库文
+件处在同一个目录中，并且文件名字是数据库文件名加&#8221;-journal&#8221;后缀。回滚日志文件同时也记录原来数据库文件的大小以便随着数据库
+文件的增长能够恢复到原来的大小。
+</p>
+
+
+<p>
+如果存在多个数据库文件，那么每个数据库都会有一个自己的日志文件。一般还会有一个称为“master”（主）的日志文件。“master”日志
+文件不包含任何页内的数据，而是包含各个数据库对应的日志文件名字。每个数据库对应的日志文件内也包含“master”日志文件的名字。
+如果只有一个数据库（或则当前事务中只有没有其他数据库参与），那么不会创建“master”日志文件并且在数据库对应的日志文件中存放
+“master”日志文件名字的位置存放一个空字符串。
+</p>
+
+
+<p>
+为了数据库数据的完整性而需要回滚，回滚用到的日志文件称为热点日志文件。在进程更新数据库的过程中由于程序崩溃、操作系统崩溃
+或则系统掉电而无法完成更新时将会创建一个热点日志文件。热点日志文件的出现标志着异常情况的发生，热点日志文件的存在是为了从
+崩溃和掉电导致的异常状况下恢复数据。如果整个数据更新过程中没有发生任何异常情况，那么将不会出现热点日志文件。
+</p>
+
+
+<p>
+判断一个日志文件是否是热点日志文件的步骤：</br>
+1). 日志文件存在并且它的大小超过512字节。</br>
+2). 日志文件的头部大小非零并且组织良好</br>
+3). “master”日志文件存在或则“master”日志文件名字为空</br>
+4). 日志文件对应的数据库文件没有RESERVED锁。
+</p>
+
+
+<h2>日志文件的处理机制</h2>
+
+
+<p>
+在读取数据库文件的内容之前，SQLite都会检查是否存在热点日志文件。如果存在热点日志文件，那么在读操作之前将使用该热点日志文件
+恢复数据，这样就保证了在读的时候数据是一致的。
+</p>
+
+
+<p>
+进程从数据库文件的读操作的步骤：</br>
+1). 打开数据库文件并且申请获取SHARED锁，如果无法获得SHARED锁那么直接失败并且返回SQLITE_BUSY。</br>
+2). 检查数据库文件是否存在对应的热点日志文件，如果没有对应的热点日志文件那么该步骤结束。如果存在热点日志文件，那么必须按照
+以下的步骤进行回滚。</br>
+3).申请获取PENDING锁，如果申请失败那么表明有其他进程在进行回滚操作，在这种情况下只要释放所有的锁，关闭数据库并且返回SQLITE_BUSY。</br> 
+4). 读取日志文件并且回滚这些变化。</br>
+5). 等待这些回滚变化持久化。</br>
+6). 删除日志文件。</br>
+7). 删除“master”日志文件，该步骤是可选的。</br>
+8). 删除EXCLUSIVE和PENDING锁，保持SHARED锁。
+</p>
+
+
+<h2>删除过时的“master”日志文件</h2>
+
+
+<p>
+没有强制的要求删除过时的“master”日志文件，唯一的目的是释放其占用的磁盘空间。没有一个日志文件指向该“master”日志文件，那么该
+“master”日志文件称为过期的日志文件。为了甄别“master”日志文件是过时的日志文件，首先通过读取该“master”日志文件获取它记录的所有
+日志文件。接下来检查每个日志文件，查看这些日志文件中有没有指向该“master”日志文件的。这些日志文件中一旦有一个日志文件指向该
+“master”日志文件，那么该“master”日志文件就不是过时的“master”日志文件了。如果这些能找到的日志文件中没有一个指向该“master”日志
+文件那么该“master”日志文件可以断定为过时的“master”日志文件。
+</p>
+
+
+<h1>SQLite写入操作</h1>
+
+
+<p>
+在向数据库文件写入数据之前，进程必须先获取SHARED锁。在获得SHARED锁后必须在申请获取RESERVED锁。RESERVED锁标志着进程想要在将来
+的某个时刻向数据库文件写入数据。一次只能允许一个进程获取RESERVED锁，在获得该锁后仍然允许其他进程读取数据。
+</p>
+
+
+<p>
+如果进程在获取RESERVED锁失败，那表明有其他进程已经获得了RESERVED锁。在这种情况下，写操作将失败并且返回SQLITE_BUSY。
+</p>
+
+
+
+
+<p>
+在成功获得RESERVED锁，进程会创建回滚日志。日志文件的头部在初始化时候保存数据库文件的大小，并且日志文件的头部会保留存储master日志
+名字的空间。
+</p>
+
+
+<p>
+进程在正式修改数据库文件之前，需要将数据库文件内的内容写入到日志文件。数据库变动的内容开始时只保存在内存中，数据库文件保存不变，只
+有这样其他进程依然可以读数据库文件的内容。
+</p>
+
+
+<p>
+在内存缓存充满或则准备好提交修改的数据时写进程才会更新数据库文件。在更新数据库文件之前，必须保证没有其他进程在读取数据库内容并且
+日志文件的内容已经安全的存放在磁盘上以便在断电发生后可以用来回滚未完成的提交。
+</p>
+
+
+
+
+<p>
+具体步骤如下：</br>
+1). 确保所有的日志文件内容都成功写入到磁盘，防止在断电情况下丢失数据。</br>
+2). 获得一个PENDING锁，再获得EXCLUSIVE锁。如果其他进程持有SHARED锁，写进程必须等待其他进程释放持有的SHARED锁才能获得EXCLUSICE锁。</br>
+3). 将内存中存放的关于页数据的修改内容写入到磁盘内。 
+</p>
+
+
+
+
+<p>
+如果内存缓存空间已满，那么写进程将会立刻提交修改的内容到磁盘上，否则写进程依然在使用内存缓存其他页数据的变化。为了将下一次的数据修改
+写入到数据库文件，日志文件需要同步到磁盘上。写进程在所有的变化提交之前必须一直持有EXCLUSIVE锁，这也就说在开始提交数据变化到提交结束这
+段时间内其他进程不允许访问数据库。
+</p>
+
+
+
+
+<p>
+4). 持有数据库文件的EXCLUSIVE锁，确保所有内存中数据的修改点通过以上三个步骤都写入到数据库文件中。</br>
+5). 刷新所有的数据库变化到磁盘，等待所有的变化实际写入到磁盘上。</br>
+6). 删除日志文件。</br>
+7). 释放进程持有的EXCLUSIVE和PENDING锁。</br>
+</p>
+
+
+<p>只要写进程释放PENDING锁，其他进程可以读取数据库内容，在当前的实现中，RESERVED锁也会被释放。</p>
+
+
+<p>
+如果事物涉及到几个数据库文件，那么提交流程将更为复杂：</br>
+1). 确保对所有数据库文件都持有一个EXCLUSIVE锁和每一个数据库文件都有一个有效的日志文件。</br>
+2). 创建一个master日志文件，master日志文件的名字可以是随意的。将没有日志文件的名字写到master日志文件内，并将其刷新到磁盘上。</br>
+3). 将master日志文件的名字写到各个日志文件内，并将日志文件的内容同步到磁盘上。</br>
+4). 将内存中所有关于数据库变化的内容刷新到磁盘中。</br>
+5). 删除master日志文件。</br>
+6). 删除其他日志文件。</br>
+7). 释放所有持有的EXCLUSICE锁和PENDING锁。
+</p>
+
+
+<h1>写饥饿现象</h1>
+
+
+<p>
+在SQLite2版本上，如果有很多进程需要读数据库，可能会发生在一段很长时间内进程都在读数据库。在一段时间之内始终都有读锁存在，那么没有
+进程那些修改数据库的内容，因为写进程无法获得写锁。
+</p>
+
+
+<p>
+SQLite3版本通过PENDING锁避免写饥饿现象的发生，PENDING锁允许正在读的进程继续读操作但阻止其他进程获得读锁。所以读写频繁的数据库可以
+使用PENDING锁避免写饥饿现象的发生。
+</p>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1169,222 +1440,6 @@ SWIPE_ACTION_CHOICE。</br>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2014/11/05/swipelistviewyuan-ma-fen-xi-zhi-swipelistviewshi-tu/">SwipeListView源码分析之SwipeListView视图</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2014-11-05T23:04:00+08:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><blockquote><p>SwipeListView视图源码比较简单,SwipeListView主要起到连接用户和滑动事件处理实体的作用。其主要方法
-可以归结为几个大类,属性设置系列方法、用户滑动事件回调系列方法和控制SwipeListView表现系列方法。</p></blockquote>
-
-<p>现在将SwipeListView的几类方法描述如下：</p>
-
-
-<h1>属性设置系列方法</h1>
-
-
-<ul>
-    <li>swipeOffsetRight属性</li>
-    <p><code>setOffsetRight()</code>方法, 设置右側滑动的边距。</p>
-    <li>swipeOffsetLeft属性</li>
-    <p><code>setOffsetLeft()</code>方法,设置左側滑动的边距。</p>
-    <li>swipeMode属性</li>
-    <p><code>setSwipeMode()</code>方法，取值常量定义于SwipeListView类，SWIPE_MODE_NONE、SWIPE_MODE_BOTH、SWIPE_MODE_RIGHT、SWIPE_MODE_LEFT五个。</p>
-    <li>swipeCloseAllItemsWhenMoveList属性</li>
-    <p><code>setSwipeCloseAllItemsWhenMoveList()</code>方法，设置在SwipeListView上下滚动时是否关闭所有SwipeListView的组件。</p>
-    <li>swipeOpenOnLongPress属性</li>
-    <p><code>setSwipeOpenOnLongPress()</code>方法，设置用户在长按SwipeListView上的组件时是否打开组件（组件执行相应的操作）</p>
-    <li>swipeActionLeft属性</li>
-    <p><code>setSwipeActionLeft()</code>方法，设置组件左滑操作类型，取值定义于SwipeListView内。
-    <code>getSwipeActionLeft()</code>方法，获取组件左滑动操作类型，取值定义于SwipeListView内。
-    该属性的值分别可以设置为SWIPE_ACTION_REVEAL、SWIPE_ACTION_DISMISS、SWIPE_ACTION_CHOICE和SWIPE_ACTION_NONE。</p>
-    <li>swipeActionRight属性</li>
-    <p><code>setSwipeActionRight()</code>方法，设置组件右滑操作类型，取值与swipeActionLeft一样。
-    <code>getSwipeActionRight()</code>方法，获取组件右滑操作类型，取值与swipeActionLeft一样。</p>
-</ul>
-
-
-<h1>SwipeListView控制系列方法</h1>
-
-
-<p><li>SwipeListView的onInterceptTouchEvent()方法</li>
-<img class="center" src="/images/SwipeListView1.png"></p>
-
-<p>
-    该方法主要是截获用户滑动事件，在判断到用户是在垂直方向上滑动时将拦截Touch事件，此时将由SwipeListViewTouchListener的<code>onTouch()</code>
-    方法进行Touch事件处理，并执行相应的动画。SwipeListViewTouchListener实现了OnTouchListsner接口，并在SwipeListView的<code>init()</code>方法内
-    将其设置为SwipeListView的监听。起到关键性作用的方法是<code>checkInMoving()</code>方法，该方法通过两次Move事件的xDelta和yDeltaY进行判断用户
-    是在X轴上进行滑动还是在Y轴上进行滑动，滑动距离的阈值是ViewConfiguration返回的ScaledPagingTouchSlot。
-</p>
-
-
-<p><li>SwipeListView的init()方法</li></p>
-
-<p>
-    该方法在SwipeListView的构造方法里调用，该方法初始化SwipeListView自定义属性的值，并将这些参数值设置到SwipeListViewTouchListener内。其中比较
-    重要的是设置SwipeListView的OnTouchListener和onScrollListener监听。OnScrollListener实现在SwipeListViewTouchListener内，该监听的主要功能是控制
-    在choice模式下用户滑动ListView时关闭所有的Items，在滑动时停止对用户Touch事件的处理。
-</p>
-
-
-<p><img class="center" src="/images/SwipeListView2.png">
-<li>SwipeListView的unselectedChoiceStates()方法</li></p>
-
-<p>
-    SwipeListView组件本身没有实现该功能而是将该实现交给SwipeListViewTouchListener类来实现。在SwipeListViewTouchListener内将遍历所有的Items并将
-    他们的checked状态设置为false,在遍历到的Item在可见区域内时将根据该Item的checked状态设置该Item所属的FrontView的背景图片。
-</p>
-
-
-<p><img class="center" src="/images/SwipeListView3.png">
-<li>SwipeListView的setAdapter()方法</li></p>
-
-<p>
-    该方法比较简单，首先调用父类的setAdapter()方法也就是ListView的setAdapter()方法。在调用完父类的setAdapter()方法后将设置SwipeListViewTouch
-    Listener内的opened、openedRight和checked三个列表的初始值。这三个列表分别表示各个Item的打开状态、右滑打开状态和checked状态，在该方法内将会
-    初始化为Adapter元素个数大小。该方法接下来添加一个DataSetObserver，在数据发生变化时将动态增加opened、openedRiht和checked列表的大小。
-</p>
-
-
-<p><img class="center" src="/images/SwipeListView4.png">
-<li>SwipeListView的dismiss()方法</li></p>
-
-<p>
-    SwipeListView的dismiss()方法有点儿小复杂，该方法将根据参数position指定的Item是否处于可见的区域而执行不同的逻辑。在Item处于可见的区域时将
-    创建一个ValueAnimator实例，并添加一个AnimatorUpdateListener监听，在该监听的回调方法内将动态控制Item的布局参数。在整个动画过程中不允许该
-    组件进行任何操作。在当前Item不在可视区域内时将简单的添加一个PendingDismissData到mPendingDismisses中。最后如果当前Item在可见区域内时在动画
-    结束后100ms将恢复该Item的Alpha，TranslateX等值并重新将该Item的布局参数恢复为原来的值，在这一切结束后将销毁mPendingDismisses列表。如果当前
-    Item处于不可见区域时将只会简单的销毁mPendingDismisses列表。
-</p>
-
-
-<p><li>SwipeListView的dismissSelected()方法</li></p>
-
-<p>
-    该方法的基本原理和dismiss()方法类似，所不同的是该方法将通过SwipeListViewTouchListener遍历所有处于checked状态的Items并执行dismiss()方法同样
-    的逻辑。在处理的Item列表内存在处于可见区域内的元素时，将恢复这些Item的值并销毁mPendingDismiss列表。
-</p>
-
-
-<p><img class="center" src="/images/SwipeListView5.png">
-<li>SwipeListView的openAnimation()方法</li></p>
-
-<p>
-    该方法将功能的实现委托给SwipeListViewTouchListener的<code>openAnimation()</code>方法来实现，该方法将获取指定position的Item的FrontView并将其
-    传递给一个同名的重载方法，在判断到该Item没有处于open状态时将调用<code>generateRevealAnimate()</code>执行左滑动画操作。
-</p>
-
-
-<p><img class="center" src="/images/SwipeListView6.png">
-<li>SwipeListView的closeAnimate()方法</li></p>
-
-<p>
-    该方法也是调用SwipeListViewTouchListener的<code>closeAnimation()</code>方法来实现右滑恢复Item原位的操作。SwipeListViewTouchListener的方法将
-    调用<code>generateRevealAnimate()</code>实现右滑恢复原位操作。
-
-</p>
-
-
-<p><li>SwipeListView的closeOpenedItems()方法</li></p>
-
-<p>
-    该方法还是通过调用SwipeListViewTouchListener的同名方法来实现对应的功能，该方法的基本思路是遍历当前可见区域内的所有Items调用closeAnimation()
-    关闭所有处于opened状态的元素，也就是执行右滑恢复原位的操作。
-</p>
-
-
-<h1>SwipeListView用户滑动回调方法</h1>
-
-
-<p><li>SwipeListView的onDismiss()方法</li></p>
-
-<p>
-    该回调方法表示那些Item元素执行了dismiss操作，将方法将事件派发给注册的SwipeListViewListener监听。<code>onDismiss()</code>方法被SwipeListViewTouch
-    Listener的<code>removePendingDismisses()</code>(主要针对Item处于可见区域的情况)和swipeListView的<code>dismiss()</code>和<code>dismissSelected()
-    </code>调用（这两个主要针对Item不在可见区域内的情况）。
-</p>
-
-
-<p><li>SwipeListView的onStartOpen()方法和onStartClose()方法</li></p>
-
-<p>
-    <code>onStartOpen()</code>方法表示指定position的Item将执行某种操作，包括左滑等操作。该方法在SwipeListViewTouchListener的<code>onTouch()
-    </code>方法的Move事件内进行调用。<code>onStartClose()</code>方法表示指定position的Item将执行恢复操作，这个方法的调用也是在<code>OnTouch()
-    </code>方法的Move事件内。Move事件控制调用<code>onStartOpen()</code>还是<code>onStartClose()</code>方法是由当前Item是否处于opened状态决定的。
-
-</p>
-
-
-<p><li>SwipeListView的onClickFrontView()方法和onClickBackView()方法</li></p>
-
-<p>
-    <code>onClickFrontView()</code>表示用户点击Item的FrontView，<code>onClickBackView()</code>方法表示用户点击Item的BackView。这两个方法没有什么
-    可以多加介绍的。
-</p>
-
-
-<p><li>SwipeListView的onOpened()方法和onClosed()方法</li></p>
-
-<p>
-    <code>onOpened()</code>方法表示指定position的Item已经处于opened状态（滑动、渐隐等）并且是否是右滑的。而<code>onClosed()</code>方法表示指定
-    position的Item是否处于非opened状态（恢复）。这两个方法都是在SwipeListViewTouchListener的<code>generateRevealAnimate()</code>方法内的动画结束
-    回调。
-</p>
-
-
-<p><li>onChoiceStarted()、onChoiceEnded()和onChoiceChanged()方法</li></p>
-
-<p>
-    <code>onChoiceStarted()</code>在第一次出现Item被checked的时候调用、方法<code>onChoiceEnded()</code>在最后一个Item的checked状态变为false时调用。
-    <code>onChoiceChanged()</code>在每一次有Item的checked状态发生变化时调用。所有这些方法在SwipeListViewTouchListener的swapChoiceState()方法内调用。
-</p>
-
-
-<p><li>onFirstListItem()、onLastListItem()和onListChanged()</li></p>
-
-<p>
-    <code>onFirstListItem()</code>和<code>onLastListItem()</code>在OnScrollListener的<code>onScroll()</code>方法调用。他们分别在第一个Item可见和最后
-    一个Item可见时调用。<code>onListChanged()</code>方法在SwipeListView的<code>setAdapter()</code>方法内的数据监听器的回调中调用。
-</p>
-
-
-<p><li>SwipeListView的move()方法</li></p>
-
-<p>
-    <code>move()</code>方法在SwipeListViewTouchListener的<code>onTouch()</code>方法的Move事件内调用，用来通知监听器指定的Item在滑动，并且可以获得
-    该Item的滑动距离。
-</p>
-
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -1398,6 +1453,10 @@ SWIPE_ACTION_CHOICE。</br>
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/11/07/sqlite3wen-jian-suo-yu-bing-fa-kong-zhi/">SQLite3文件锁与并发控制</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2014/11/06/shellming-ling-zhi-ci-pan-fen-qu/">Shell命令之磁盘分区</a>
@@ -1415,10 +1474,6 @@ SWIPE_ACTION_CHOICE。</br>
         <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
       </li>
     
-      <li class="post">
-        <a href="/blog/2014/11/05/java-virtual-machinela-ji-shou-ji-qi/">Java Virtual Machine垃圾收集器</a>
-      </li>
-    
   </ul>
 </section>
 
@@ -1432,7 +1487,7 @@ SWIPE_ACTION_CHOICE。</br>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2014 - TuomingZheng -
+  Copyright &copy; 2015 - TuomingZheng -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
   - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
   <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
