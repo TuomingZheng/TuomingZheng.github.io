@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android辅助知识笔记 | 郑拓铭博客]]></title>
   <link href="http://TuomingZheng.github.io/blog/categories/androidfu-zhu-zhi-shi-bi-ji/atom.xml" rel="self"/>
   <link href="http://TuomingZheng.github.io/"/>
-  <updated>2015-01-02T18:17:25+08:00</updated>
+  <updated>2015-01-13T00:40:22+08:00</updated>
   <id>http://TuomingZheng.github.io/</id>
   <author>
     <name><![CDATA[TuomingZheng]]></name>
@@ -12,6 +12,15 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SQLite3之WriteAheadLogging]]></title>
+    <link href="http://TuomingZheng.github.io/blog/2015/01/12/sqlite3zhi-writeaheadlogging/"/>
+    <updated>2015-01-12T01:54:43+08:00</updated>
+    <id>http://TuomingZheng.github.io/blog/2015/01/12/sqlite3zhi-writeaheadlogging</id>
+    <content type="html"><![CDATA[
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SQLite3文件锁与并发控制]]></title>

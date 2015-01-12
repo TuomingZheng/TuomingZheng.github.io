@@ -9,8 +9,8 @@
   <meta name="author" content="TuomingZheng">
 
   
-  <meta name="description" content="SQLite3数据库的文件锁机制与并发是一个很有趣话题，只有在深入了解SQLite3数据库文件锁的机制才能
-在工作中快速解决多线程或则多进程并发引起的数据库锁问题。在本文档内并不涉及SQLite3WAL模式下的机制。 SQLite3文件锁与并发概述 相对于原来SQLite2， &hellip;">
+  <meta name="description" content="
+">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +65,268 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/01/12/sqlite3zhi-writeaheadlogging/">SQLite3之WriteAheadLogging</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-01-12T01:54:43+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content">
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/01/08/androidkai-yuan-zu-jian-zhi-disklrucache/">Android开源组件之DiskLruCache</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-01-08T22:24:54+08:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>在Android应用程序开发过程中不可避免的要接触到内存数据Cache和外部存储介质数据的Cache。DiskLruCache
+作为AOSP提供的一个外部存储介质数据的Cache，我们有必要对它进行深入的了解。</p></blockquote>
+
+<p>
+对一个开源组件的学习，首先必须掌握该组件最基本的使用方法。在熟练掌握基本使用方法后才能进一步根据组件
+使用场景对组件的实现进行深入分析。本片博客将根据习惯，将从该组件的使用方法开始介绍，接下来将详细介绍
+日志文件的格式，最后按照API的使用场景对组件的实现进行剖析。
+</p>
+
+
+<h1>DiskLruCache基本使用介绍</h1>
+
+
+<p>
+DiskLruCache做为外部存储介质的缓存，我们必须了解其基本的组成结构。DiskLruCache由一系列的entry组成，每
+个entry对应与journal文件中的一行记录。而一个entry又是由若干个values组成，其实每个value代表着一个文件。
+至于每个entry所拥有的文件个数则用户可以通过DiskLruCache的<code>open()</code>方法进行配置。
+</p>
+
+
+<p>
+我们在进行编程的时候常用的是通过DiskLruCache的open()方法获得一个DiskLruCache实例（DiskLruCache的构造方
+法是私有的）。在获取到DiskLruCache实例后，通过该类的edit()方法获取指定key对应的Editor进行读写操作或则
+通过get()方法获取Snapshot实例进行批量的读操作。
+</p>
+
+
+<pre><code>final int appVersion = 1;
+final int valueCount = 10;
+final int maxSizeInByte = 1024 * 1024 * 100;
+File cacheDir = new File(Environment.getExternalStorageDirectory(), "diskCache");
+DiskLruCache cache = DiskLruCache.open(cacheDir, appVersion, valueCount, maxSizeInByte);
+Editor editor = cache.edit("thumnail");
+FileOutputStream fos = editor.newOutputStream(1);
+.....
+editor.commit();
+
+FileInputStream fis = new FileInputStream(editorr.newInputStream(1));
+.....
+</code></pre>
+
+<h1>DiskLruCache的journal文件格式介绍</h1>
+
+
+<p>
+在介绍DiskLruCache的journal文件格式之前，先了解一下DiskLruCache的文件构成，这有助于我们正确的理解journal
+文件的格式。DiskLruCache所有的文件都在用户指定的一个目录内，该目录内包含了DiskLruCache管理所需的记录文件
+也包含了存储数据的文件。
+</p>
+
+
+<h2>DiskLruCache管理所需的记录文件</h2>
+
+
+<p>
+其中DiskLruCache管理所需的记录文件包括这几个文件，journal文件、journal backup文件和journal tmp文件。其中
+journal文件是这一部分着重需要说明的内容，其他两个文件的用途通过文件的名字可以很清楚的看出来。journal back
+文件保存的是处于正确状态的journal文件的内容，一般情况下该文件是不存在的，只有在journal文件未成功更新到一
+个新的状态值时才可能产生的。总的来说，这几个文件都是辅助journal文件从一个正确的状态切换到另一个正确的状态，
+<img class="center" src="/images/rebuildJournal.png">
+从上面的代码可以看出journal tmp文件是在rebuild journal文件时写入的数据的文件，该文件存储的是下一个正确状态
+的值，journal backup文件是上一个状态journal文件的值。在journal tmp文件成功改为journal文件的时候会将backup
+文件删除。
+</p>
+
+
+<h2>DiskLruCache保存数据的文件</h2>
+
+
+<p>
+DiskLruCache是由entry构成的，而每个entry又是由若干个value构成的。其中每个value对应着两个文件，一个文件称为
+clean文件，另一个文件称为dirty文件。这里的dirty文件和clean文件的关系与journal文件和journal tmp文件类似，
+dirty文件是用户写入数据的文件，只有用户确认提交写入的数据时才会将dirty文件更名为clean文件。在文件系统中这
+两个文件的名字有着固定的模式，dirty文件的名字通常是key.index.tmp而clean文件的名字通常是key.index。也就是说
+用户通过Editor的<code>newOutputStream()</code>获取的OutputStream写入的数据实际上是写到dirty文件内，只有用户
+调用<code>commit()</code>方法时才会将dirty文件更名为clean文件。
+</p>
+
+
+<h2>Journal文件格式和记录格式</h2>
+
+
+<h3>Journal文件格式</h3>
+
+
+<p>
+与其他一些常见格式的文件类似，DiskLruCache文件也存在文件头的概念。DiskLruCache文件头由五行数据组成，这五行
+数据标识了DiskLruCache journal文件的身份。他们的顺序分别是MAGIC（libcore.io.DiskLruCache）、VERSION（DiskLruCache
+的版本）、appVersion、valueCount（每个entry包含的value的个数）。
+</p>
+
+
+<p>
+这些数据的构建在<code>rebuildJournal()</code>方法内，该方法在整个组件中有两处地方被调用。他们分别是在用户首次
+使用该cache时调用<code>open()</code>方法，和组件定时整理Cache使用的空间时调用。这两处地方是：
+<img class="center" src="/images/diskLruCacheOpen.png">
+<img class="center" src="/images/cleanUpCallable.png">
+</p>
+
+
+<h3>Journal文件的记录格式</h3>
+
+
+<p>
+DiskLruCache的journal文件除了header部分以外，其他的内容中每一行都代表着cache中一个entry的记录信息。这里的记录
+信息包括记录状态、键值和其他状态值组成（例如字节数）, 这些数据通过空格字符分割开来。记录状态和记录的键值必须
+符合一定的规范，其中记录的状态包括固定的几个值CLEAN、READ、DIRTY和REMOVE，而键值则必须由0-9、a-z和下划线构成
+的并且整个key的长度不得超过64个字符。
+</p>
+
+
+<p><li>DIRTY状态：</li></p>
+
+<p>
+DIRTY状态表明当前的entry处于被创建或则更新的状态。正常情况下每个DIRTY状态记录的下一个记录是CLEAN或则REMOVE活动。
+如果一个DIRTY状态的记录缺乏配对的CLEAN或则REMOVE记录则表明value的dirty文件需要被删除掉！
+</p>
+
+
+<p><li>CLEAN状态：</li></p>
+
+<p>
+CLEAN状态表明对应的entry被成功的commit并且现在可以进行读操作。CLEAN记录中会包含entry每个value对应的长度。
+</p>
+
+
+<p><li>REMOVE状态：</li></p>
+
+<p>
+REMOVE状态表明该记录已经被删除了。
+</p>
+
+
+<p><li>READ状态</li></p>
+
+<p>
+READ状态记录了entry访问的频率。
+</p>
+
+
+<h1>DiskLruCache的API场景实现分析</h1>
+
+
+<p>
+这里我们从调用API的角度按程序的执行逻辑逐步分析DiskLruCache的实现原理。这里将划分为三条路径进行分析，这三条路径
+分别为DiskLruCache调用<code>edit()</code>方法获取Editor、调用<code>get()</code>方法获取Snapshot和调用<code>remove
+()</code>方法删除指定的entry。
+</p>
+
+
+<p><li>DiskLruCache的open()方法</li></p>
+
+<p>
+在以上三条执行路径中均包含DiskLruCache实例获取的操作，为此必须将DiskLruCache实例获取的代码的逻辑搞清楚。由于
+DiskLruCache的构造方法是私有的，所以获取DiskLruCache实例必须通过<code>open()</code>方法获取。<code>open()</code>
+方法需要正确处理journal文件和journal backup文件的关系，如果directory下存在journal backup文件则需要根据journal文件
+是否存在进行journal文件的恢复或则journal backup文件的删除。在journal文件存在的情况下需要根据文件里面的信息构建
+entry的Lru映射关系，如果journal文件不存在则需要根据内存里entry的信息rebuild一个Lru的映射表。
+<img class="center" src="/images/DiskLruCacheOpen.png">
+</p>
+
+
+<p><li>DiskLruCache的edit()方法</li></p>
+
+<p>
+DiskLruCache的<code>edit()</code>方法的逻辑是根据传进来的key获取entry或则创建新的entry。如果无法获得entry对象则新
+创建一个Entry实例，并将其currentEditor设置为新创建的Editor对象。如果可以获取到entry对象则判断其是否存在currentEditor
+，如果存在该对象则说明该entry正在被访问当前请求无法满足。
+<img class="center" src="/images/DiskLruCacheEdit.png">
+</p>
+
+
+<p><li>DiskLruCache的get()方法</li></p>
+
+<p>
+DiskLruCahe的<code>get()</code>方法获取Snapshot对象，利用该对象进行读操作。<code>get()</code>方法获取key对应的Entry
+，创建一系列FileInputStream对象，该对象是value的clean文件的FileInputStream。在journal文件内添加一条READ状态的记录并
+且创建一个Snapshot对象用于返回。
+</p>
+
+
+<p><img class="center" src="/images/DiskLruCacheGet.png">
+<li>DiskLruCache的remove()方法</li></p>
+
+<p>
+DiskLruCache的<code>remove()</code>方法首先获得key对应的Entry，根据该Entry是否处于编辑状态进行控制。如果Entry处于编辑
+状态那么不允许用户删除当前的Entry，否则删除该Entry的value对应的clean文件并重新计算DiskCache的size。如果成功删除该entry
+的数据那么将在journal文件中添加一条REMOVE的记录。
+<img class="center" src="/images/DiskLruCacheRemove.png">
+</p>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1221,225 +1483,6 @@ GC时需要停顿所有Java执行线程，如果在判定哪些对象可以被�
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2014/11/05/java-virutal-machinenei-cun-qu-yu/">Java Virutal Machine内存区域</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2014-11-05T23:19:55+08:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><blockquote><p>Java虚拟机自动内存管理技术使得我们不用再像使用C++那样纠结于内存分配回收问题。但是这并不意味着Java程序不存在内存泄漏问题。
-而在Java程序内存泄漏时，我们必须清楚了解Java虚拟机的内存区域才能高效的解决掉内存泄漏问题和OOM问题。</p></blockquote>
-
-<h1>Java虚拟机运行时数据区域</h1>
-
-
-<p>
-    Java虚拟机将Java程序运行时的内存区域划分为若干个不同类型的区域。这些区域的用途、创建时间和销毁时间都有各自的特点，有些
-是与线程的生命周期紧密相关的，而有些数据区域却与进程的生命周期相关的。接下来将按照区域的创建和销毁的时间，分别罗列这些区域：
-</p>
-
-
-
-
-<ul>
-    <h2>线程私有的内存区域</h2>
-    <li>
-        程序计数器
-    </li>
-    <p>
-        程序计数器(PC)是当前线程所执行的字节码行号指示器，它是一块较小的内存区域。该内存区域为各个线程所有，每个线程的程序
-        计数器互不影响对方，在切换线程执行时也将切换线程计数器。这里的程序计数器仅仅指向Java程序对应的字节码行号，在程序执行
-        native代码时，程序计数器的值为空。
-    </p>
-    <li>Java虚拟机栈</li>
-    <p>
-        Java虚拟机栈也是线程私有的内存区域，每个Java方法在执行时都会在该执行线程的Java虚拟机栈内创建一个栈帧并且其push为栈
-        顶元素，在方法执行结束时该栈帧pop出执行线程的Java虚拟机栈。Java方法的栈帧内包含有局部变量表、操作数栈、动态链接和
-        方法返回地址等信息。
-    </p>
-    <p>
-        Java虚拟机栈常见的异常有StackOverflowError和OutOfMemoryError两种，其中如果线程请求的栈的深度超过Java虚拟机所允许的
-        最大深度将抛出StackOverflowError，程序中如果存在方法的递归调用并且无法满足递归出口条件时会导致该问题发生。如果Java
-        虚拟机栈运行动态扩展的话，在Java虚拟机栈无法得到内存空间进行扩展时将会抛出OutOfMemoryError异常。
-    </p>
-    <li>本地方法栈</li>
-    <p>
-        本地方法栈与Java虚拟机栈的区别是本地方法栈是为native方法服务的，本地方法栈也有StackOverflowError和OutOfMemoryError
-        两个异常情形。在一些虚拟机中甚至将Java虚拟机栈和本地方法栈合二为一。
-    </p>
-
-    <p>
-        以上这些虚拟机内存区域都是线程私有的，不同的线程将拥有不同的内存区域。直观的说分配在这些区域的数据不可能被多个用户
-        线程所共享，也就不存在并发同步引起的问题了。
-    </p>
-</ul>
-
-
-
-
-<ul>
-    <h2>进程所有的内存区域</h2>
-    <li>Java堆</li>
-    <p>
-        Java堆是Java应用程序内使用空间比较大的一块内存区域，该内存区域的生命周期与进程是同步的。在虚拟机启动是创建该区域，该
-        区域的目的是存放Java对象。Java堆空间可以实现为固定大小，也可以实现为可以动态扩展。实现为动态扩展时可以通过-Xmx和-Xms
-        配置Java堆空间的最大值和最小值，在无法使用堆空间为Java对象分配空间时将抛出OutOfMemoryError异常。这里所讨论的Java堆空
-        间只是操作系统的虚拟地址空间，对于实现虚拟内存功能的操作系统来说，给Java堆分配的物理地址空间可能是不连续的。
-    </p>
-    <li>方法区</li>
-    <p>
-        在Java虚拟机规范里将方法区列为Java堆的一部分，方法区的一个别名是Non-Heap。方法区是各个用户线程共享的内存区域，所以存储
-        在该区域的数据在多线程并发时也会有同步问题。该区域用于存储被虚拟机加载的类信息、常量、静态变量和编译后形成的代码。方法
-        区也不需要连续的内存空间，支持固定大小和可动态扩张两种方式，甚至可以选择不同的垃圾回收机制。该内存区域的垃圾收集主要是
-        针对常量池和类型的卸载。在无法继续分配方法区空间时也将抛出OutOfMemoryError。
-    </p>
-    <li>运行时常量池</li>
-    <p>
-        运行时常量池是方法区的一部分，该区域存放的是类加载进虚拟机时class文件内的常量池，主要是编译形成的字面量和符号引用。运行
-        时常量池与class文件内的常量池的区别是运行时常量池可以在程序运行期间将新的常量放入其中。运行时常量池受方法区的限制，在空
-        间不够分配时也将抛出OutOfMemoryError。
-    </p>
-    <li>直接内存</li>
-    <p>
-        直接内存不是Java虚拟机运行时数据区的一部分，但这部分内存也会有OutOfMemoryError问题。这些主要是使用native函数直接分配Java
-        堆外的内存，比如Java NIO。直接内存不会受Java堆的大小限制但是会受操作系统为每个进程分配的地址空间大小的限制。
-    </p>
-</ul>
-
-
-
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2014/11/05/swipelistviewyuan-ma-fen-xi-zhi-swipelistviewtouchlistener/">SwipeListView源码分析之SwipeListViewTouchListener</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2014-11-05T23:13:25+08:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><blockquote><p>在分析完SwipeListView后，这个开源控件的内容也没剩下多少了。其中最重要最核心的功能模块是
-SwipeListViewTouchListener的onTouch()方法，该方法处理用户的Touch事件并更新UI显示。</p></blockquote>
-
-<p>
-整个SwipeListViewTouchListener的源码剩下比较核心的东西就是<code>onTouch()</code>方法
-和<code>move()</code>方法。其他的系列方法在介绍SwipeListView的时候已经都涉及了，在此不进
-行赘述，主要按照用户Touch事件这个情形进行介绍。
-</p>
-
-
-<h1>onTouch()方法</h1>
-
-
-<p><li>Down事件</li>
-<img class="center" src="/images/SwipeListTouchListener1.png"></p>
-
-<p>该方法首先根据View的<code>getLocationOnScreen()</code>方法获取SwipeListView在屏幕上的位置，
-并根据Touch事件发生的位置（在屏幕上的位置）来得到Touch事件在SwipeListView组件上发生的位置。
-再则通过遍历SwipeListView的所有child组件，通过View的<code>getHitRect()</code>获取每个child
-组件的点击位置来判断Touch事件发生的坐标落在该Rect内。如果Touch事件在某个Item内发生则将判断
-组件是否可用，在可用的状态下将设置该Item的FrontView和BackView的事件监听是否可用，并初始化
-VelocityTracker。
-</p>
-
-
-<p><li>Move事件</li></p>
-
-<p><p>接下来将分段介绍Move事件的处理逻辑<p>
-<img class="center" src="/images/SwipeListTouchListener2.png">
-<p>
-这段代码的逻辑比较清晰，起到了校正滑动距离的作用。在该段代码里获取SwipeListView的SwipeListViewListener
-监听里通过<code>onChangeSwipeMode()</code>方法内设置的mode。在mode为none时直接将移动距离设置为0，在其他
-几种情况下也将移动距离设置为0。他们的情况分别是:
-<ul>
-1):在当前滑动的Item处于open状态时如果mode是left，而用户却继续往左滑动时将距离设置为0<br/>
-2):在当前滑动的Item处于open状态时如果mode是right，而用户却继续往右滑动时将距离设置为0<br/>
-3):在当前滑动的Item处于非open状态时如果mode是left，而用户却往右滑动时将距离设置为0<br/>
-4):在当前距离的Item处于非open状态时如果mode是right，而用户却往左滑动时将距离设置为0<br/>
-</ul>
-</p>
-<img class="center" src="/images/SwipeListTouchListener3.png">
-<p>
-这段代码的功能是设置mSwipeCurrentAction的值，根据当前Item是否处于open状态分别设置其状态值，并回调
-SwipeListViewListener的<code>onStartClose()</code>和<code>onStartOpen()</code>方法。</br>
-<ul>
-1): 在当前Item处于open状态时，将mSwipeCurrentAction的值设置为SWIPE_ACTION_REVEAL。</br>
-2): 在当前Item处于非open状态时，如果用户往右滑动并且右滑属性设为SWIPE_ACTION_DISMISS时将mSwipeCurrentAction
-设置为SWIPE_ACTION_DISMISS。</br>
-3): 在当前Item处于非open状态时，如果用户往左滑动组件并且左滑属性设置为SWIPE_ACTION_DISMISS是将mSwipeCurrentAction
-设置为SWIPE_ACTION_DISMISS。</br>
-4): 在当前Item处于非open状态时，如果用户往右滑动组件并且右滑属性为SWIPE_ACTION_CHOICE时将mSwipeCurrentAction
-设置为SWIPE_ACTION_CHOICE。</br>
-5): 在当前Item处于非open状态时，如果用户往左滑动组件并且左滑属性为SWIPE_ACTION_CHOICE时将mSwipeCurrentAction设置
-SWIPE_ACTION_CHOICE。</br>
-6): 在当前Item处于非open状态时，除以上几个情况其他情况都将mSwipeCurrentAction设置为SWIPE_ACTION_REVEAL。
-</ul>
-</p>
-<img class="center" src="/images/SwipeListTouchListener4.png">
-<p>
-该代码片段仅仅是在当前Item处于open状态时校正deltaX值，并调用<code>move()</code>方法，关于该方法的逻辑将在下面介绍。
-</p>
-<li>Up事件</li>
-<img class="center" src="/images/SwipeListTouchListener5.png">
-该方法先校正velocityX的值，在用户滑动距离超过Item长度一半是将转变为切换。否则根据滑动速度大小决定是否是切换状态。
-接下来将调用<code>generateAnimate()</code>方法进行动画操作。
-<h1>move()方法</h1>
-<img class="center" src="/images/SwipeListTouchListener6.png">
-<code>move()</code>方法的代码比较简单，主要是操作BackView的可见性并设置动画。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -1455,6 +1498,14 @@ SWIPE_ACTION_CHOICE。</br>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/01/12/sqlite3zhi-writeaheadlogging/">SQLite3之WriteAheadLogging</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/08/androidkai-yuan-zu-jian-zhi-disklrucache/">Android开源组件之DiskLruCache</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/11/07/sqlite3wen-jian-suo-yu-bing-fa-kong-zhi/">SQLite3文件锁与并发控制</a>
       </li>
     
@@ -1464,14 +1515,6 @@ SWIPE_ACTION_CHOICE。</br>
     
       <li class="post">
         <a href="/blog/2014/11/06/shellming-ling-zhi-wen-jian-lian-jie/">Shell命令之文件链接</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/05/shellming-ling-zhi-bei-fen-yu-hui-fu/">Shell命令之备份与恢复</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/05/androidshe-bei-rooting/">Android设备Rooting</a>
       </li>
     
   </ul>
