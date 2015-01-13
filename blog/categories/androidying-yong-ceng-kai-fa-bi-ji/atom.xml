@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android应用层开发笔记 | 郑拓铭博客]]></title>
   <link href="http://TuomingZheng.github.io/blog/categories/androidying-yong-ceng-kai-fa-bi-ji/atom.xml" rel="self"/>
   <link href="http://TuomingZheng.github.io/"/>
-  <updated>2015-01-13T00:40:22+08:00</updated>
+  <updated>2015-01-14T01:07:48+08:00</updated>
   <id>http://TuomingZheng.github.io/</id>
   <author>
     <name><![CDATA[TuomingZheng]]></name>
@@ -12,6 +12,15 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Picasso源码解析之Cache]]></title>
+    <link href="http://TuomingZheng.github.io/blog/2015/01/13/picassoyuan-ma-jie-xi-zhi-cache/"/>
+    <updated>2015-01-13T23:56:06+08:00</updated>
+    <id>http://TuomingZheng.github.io/blog/2015/01/13/picassoyuan-ma-jie-xi-zhi-cache</id>
+    <content type="html"><![CDATA[
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android开源组件之DiskLruCache]]></title>
